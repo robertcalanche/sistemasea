@@ -31,3 +31,7 @@ build/
 # Otros
 *.sqlite3
 *.db
+
+out_examenes_api/
+*.pdf
+*.docx

@@ -1,0 +1,65 @@
+INSTRUCCIONES DE USO — SEA (VERSIÓN OPTIMIZADA)
+________________________________________
+🚀 ARRANQUE DEL SISTEMA
+
+🔷 Configuración previa del dominio local (solo en Windows y solo una vez)
+Abre PowerShell como Administrador y ejecuta:
+Set-Location "C:\Users\rober\Documents\Proyecto_Evaluacion_V1"
+.\configurar_dominios_locales.ps1
+
+Esto agrega en hosts aliases como:
+127.0.0.1 sea.local
+127.0.0.1 evaluaciones.local
+127.0.0.1 admin.local
+________________________________________
+🔷 Modo híbrido (RECOMENDADO)
+Ejecuta escritorio + servidor web simultáneamente:
+Set-Location "C:\Users\rober\Documents\Proyecto_Evaluacion_V1"
+& ".\.venv\Scripts\python.exe" ".\sea_launch.py"
+
+✔️ Generas exámenes desde el PC
+✔️ Mantienes escritorio y web en el mismo flujo
+✔️ Puedes abrir el sistema desde navegador local o desde la red
+________________________________________
+🌐 Solo servidor web (RECOMENDADO para navegador, red local y celular)
+Set-Location "C:\Users\rober\Documents\Proyecto_Evaluacion_V1"
+& ".\.venv\Scripts\python.exe" ".\sea_launch.py" --web
+
+En VS Code también puedes usar la tarea:
+Servidor Web SEA — HTTP Local
+________________________________________
+🖥️ Solo escritorio
+Modo tradicional sin web:
+Set-Location "C:\Users\rober\Documents\Proyecto_Evaluacion_V1"
+& ".\.venv\Scripts\python.exe" ".\sea_launch.py" --desktop
+________________________________________
+⚙️ Puerto personalizado
+Set-Location "C:\Users\rober\Documents\Proyecto_Evaluacion_V1"
+& ".\.venv\Scripts\python.exe" ".\sea_launch.py" --web --port 8080
+
+👉 Acceso esperado:
+http://sea.local:8080
+http://<IP_LOCAL_SERVIDOR>:8080
+________________________________________
+🌍 ACCESO AL SISTEMA
+
+| Dispositivo        | URL                                 |
+|--------------------|-------------------------------------|
+| PC (mismo equipo)  | http://sea.local:5000               |
+| Alias adicional    | http://evaluaciones.local:5000      |
+| Celular / Tablet   | http://<IP_LOCAL_SERVIDOR>:5000     |
+
+Accesos útiles:
+- Escáner OMR: http://<IP_LOCAL_SERVIDOR>:5000/escanear
+- API REST: http://<IP_LOCAL_SERVIDOR>:5000/api/info
+
+________________________________________
+
+Nota:
+- El acceso local del PC ahora usa HTTP por defecto con dominio amigable.
+- Los dominios .local configurados en hosts funcionan en el PC donde fueron registrados; en el celular debes usar la IP local del servidor.
+- Flask mantiene host=0.0.0.0 y puerto 5000 para permitir acceso desde otros equipos en la misma red.
+- No se recomienda usar puerto 80 en desarrollo porque puede requerir privilegios elevados y entrar en conflicto con otros servicios.
+- Si la cámara del móvil no abre en HTTP, usa la tarea Servidor Web SEA — HTTPS como alternativa específica para OMR.
+
+Estas instrucciones están actualizadas y son las recomendadas para el arranque y acceso al sistema SEA.

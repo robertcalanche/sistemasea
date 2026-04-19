@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block title %}Gestion Academica{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-kanban me-2"></i>Gestion Academica
+    </h2>
+    <p class="text-muted mb-0 small">Hub operativo para coordinar catalogos, estudiantes, planificacion y asignaciones docentes.</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if web_can_access('/superadmin') %}
+    <a href="/superadmin" class="btn btn-outline-secondary btn-sm">Volver a SuperAdmin</a>
+    {% endif %}
+    {% if web_can_access_api('/api/info') %}
+    <a href="/api/info" class="btn btn-outline-dark btn-sm" target="_blank">Ver API</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-4" id="gestionStats">
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-people me-1"></i>Estudiantes</div>
+      <div class="display-6" id="ga-estudiantes">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-journal-text me-1"></i>Planes</div>
+      <div class="display-6" id="ga-planes">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-diagram-3 me-1"></i>Cargas</div>
+      <div class="display-6" id="ga-cargas">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-person-badge me-1"></i>Docentes</div>
+      <div class="display-6" id="ga-docentes">-</div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span><i class="bi bi-funnel me-2"></i>Resumen transversal</span>
+    <span class="badge text-bg-light border" id="ga-filtros-activos">Sin filtros</span>
+  </div>
+  <div class="card-body">
+    <form class="row g-3 align-items-end" id="ga-filtros-form">
+      <div class="col-12 col-md-4">
+        <label class="form-label small text-muted">Grado</label>
+        <select class="form-select" id="ga-grado">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label small text-muted">Curso</label>
+        <select class="form-select" id="ga-curso">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4 d-flex gap-2 flex-wrap">
+        <button class="btn btn-primary" type="submit">Actualizar resumen</button>
+        <button class="btn btn-outline-secondary" type="button" id="ga-limpiar">Limpiar</button>
+      </div>
+    </form>
+    <div class="row g-3 mt-1">
+      <div class="col-6 col-lg-3">
+        <div class="border rounded p-3 h-100 bg-light-subtle">
+          <div class="small text-muted">Grupos con matrícula</div>
+          <div class="h3 mb-0" id="ga-grupos">-</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="border rounded p-3 h-100 bg-light-subtle">
+          <div class="small text-muted">Áreas planificadas</div>
+          <div class="h3 mb-0" id="ga-areas">-</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="border rounded p-3 h-100 bg-light-subtle">
+          <div class="small text-muted">Alertas abiertas</div>
+          <div class="h3 mb-0" id="ga-alertas">-</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="border rounded p-3 h-100 bg-light-subtle">
+          <div class="small text-muted">Cobertura docente</div>
+          <div class="h3 mb-0" id="ga-cobertura">-</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-8">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-compass me-2"></i>Areas de trabajo</div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% if web_can_access('/matricula') %}
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <div class="d-flex justify-content-between align-items-start gap-3">
+                <div>
+                  <h3 class="h6 mb-1">Matrícula</h3>
+                  <p class="text-muted small mb-3">Gestion de estudiantes, importacion masiva y cambio de curso por lote.</p>
+                </div>
+                <span class="badge text-bg-success">Activo</span>
+              </div>
+              <a href="/matricula" class="btn btn-primary btn-sm">Abrir modulo</a>
+            </div>
+          </div>
+          {% endif %}
+          {% if web_can_access('/plan-estudios') %}
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <div class="d-flex justify-content-between align-items-start gap-3">
+                <div>
+                  <h3 class="h6 mb-1">Plan de Estudios</h3>
+                  <p class="text-muted small mb-3">Definicion de areas, horas semanales, copia entre cursos e importacion.</p>
+                </div>
+                <span class="badge text-bg-success">Activo</span>
+              </div>
+              <a href="/plan-estudios" class="btn btn-primary btn-sm">Abrir modulo</a>
+            </div>
+          </div>
+          {% endif %}
+          {% if web_can_access('/carga-academica') %}
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <div class="d-flex justify-content-between align-items-start gap-3">
+                <div>
+                  <h3 class="h6 mb-1">Carga Academica</h3>
+                  <p class="text-muted small mb-3">Asignacion de docentes por area, grado y curso con validacion de horas.</p>
+                </div>
+                <span class="badge text-bg-success">Activo</span>
+              </div>
+              <a href="/carga-academica" class="btn btn-primary btn-sm">Abrir modulo</a>
+            </div>
+          </div>
+          {% endif %}
+          {% if web_can_access('/estudiantes') or web_can_access_api('/api/estudiantes') %}
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <div class="d-flex justify-content-between align-items-start gap-3">
+                <div>
+                  <h3 class="h6 mb-1">Estudiantes</h3>
+                  <p class="text-muted small mb-3">Consulta operativa del inventario estudiantil y acceso al API administrativo.</p>
+                </div>
+                <span class="badge text-bg-warning">Parcial</span>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                {% if web_can_access('/estudiantes') %}
+                <a href="/estudiantes" class="btn btn-primary btn-sm">Vista web</a>
+                {% endif %}
+                {% if web_can_access_api('/api/estudiantes') %}
+                <a href="/api/estudiantes?limit=50" class="btn btn-outline-secondary btn-sm" target="_blank">API</a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-shield-check me-2"></i>Auditoria de consistencia</div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">Cruce operativo entre matrícula, plan y carga para detectar brechas antes de publicar horarios o resultados.</p>
+        <div class="list-group small mb-3" id="ga-auditoria-lista">
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            <span>Cargando auditoria...</span>
+            <span class="badge text-bg-secondary">-</span>
+          </div>
+        </div>
+        <div class="d-grid gap-2">
+          {% if web_can_access('/planta-docente') %}
+          <a href="/planta-docente" class="btn btn-outline-primary btn-sm">Ir a Planta Docente</a>
+          {% endif %}
+          <a href="#" class="btn btn-outline-secondary btn-sm" id="ga-abrir-json" target="_blank">Abrir auditoria JSON</a>
+          {% if web_can_access('/superadmin') %}
+          <a href="/superadmin" class="btn btn-outline-dark btn-sm">Volver al roadmap</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><i class="bi bi-arrow-left-right me-2"></i>Accesos rapidos</div>
+  <div class="card-body d-flex gap-2 flex-wrap">
+    {% if web_can_access_api('/api/matricula/catalogos') %}
+    <a class="btn btn-outline-secondary btn-sm" href="/api/matricula/catalogos" target="_blank">Catalogos Matricula</a>
+    {% endif %}
+    {% if web_can_access_api('/api/plan-estudios/catalogos') %}
+    <a class="btn btn-outline-secondary btn-sm" href="/api/plan-estudios/catalogos" target="_blank">Catalogos Plan</a>
+    {% endif %}
+    {% if web_can_access_api('/api/docentes') %}
+    <a class="btn btn-outline-secondary btn-sm" href="/api/docentes/selector?solo_activos=1" target="_blank">Selector Docentes</a>
+    {% endif %}
+    {% if web_can_access_api('/api/estudiantes') %}
+    <a class="btn btn-outline-secondary btn-sm" href="#" id="ga-link-estudiantes" target="_blank">Estudiantes filtrados</a>
+    {% endif %}
+    {% if web_can_access_api('/api/plan-estudios') %}
+    <a class="btn btn-outline-secondary btn-sm" href="#" id="ga-link-plan" target="_blank">Plan filtrado</a>
+    {% endif %}
+    {% if web_can_access_api('/api/carga-academica') %}
+    <a class="btn btn-outline-secondary btn-sm" href="#" id="ga-link-carga" target="_blank">Carga filtrada</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function gaQuery() {
+  const params = new URLSearchParams();
+  const grado = document.getElementById('ga-grado').value;
+  const curso = document.getElementById('ga-curso').value;
+  if (grado) params.set('grado', grado);
+  if (curso) params.set('curso', curso);
+  return params.toString();
+}
+
+function gaBuildUrl(basePath) {
+  const query = gaQuery();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
+function actualizarLinksGestion() {
+  document.getElementById('ga-link-estudiantes').href = gaBuildUrl('/api/estudiantes');
+  document.getElementById('ga-link-plan').href = gaBuildUrl('/api/plan-estudios');
+  document.getElementById('ga-link-carga').href = gaBuildUrl('/api/carga-academica');
+  document.getElementById('ga-abrir-json').href = gaBuildUrl('/api/gestion-academica/resumen');
+}
+
+function poblarSelect(selectId, values, selectedValue) {
+  const select = document.getElementById(selectId);
+  const previous = selectedValue ?? select.value;
+  select.innerHTML = '<option value="">Todos</option>';
+  for (const value of values || []) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    option.selected = value === previous;
+    select.appendChild(option);
+  }
+}
+
+function renderAuditoria(auditoria) {
+  const container = document.getElementById('ga-auditoria-lista');
+  const bloques = [
+    auditoria.sin_plan,
+    auditoria.plan_sin_carga,
+    auditoria.carga_sin_plan,
+    auditoria.cargas_sin_docente,
+  ];
+
+  container.innerHTML = bloques.map((bloque) => `
+    <div class="list-group-item">
+      <div class="d-flex justify-content-between align-items-center gap-2">
+        <span>${bloque.titulo}</span>
+        <span class="badge ${bloque.total ? 'text-bg-warning' : 'text-bg-success'}">${bloque.total}</span>
+      </div>
+      <div class="text-muted mt-1">${bloque.items.length ? bloque.items.slice(0, 2).map((item) => {
+        const partes = [item.grado, item.curso, item.area, item.docente_nombre || item.docente_documento, item.estudiantes ? `${item.estudiantes} est.` : '', item.horas ? `${item.horas} h` : ''];
+        return partes.filter(Boolean).join(' · ');
+      }).join('<br>') : 'Sin novedades en este frente.'}</div>
+    </div>
+  `).join('');
+}
+
+async function cargarResumenGestionAcademica() {
+  try {
+    actualizarLinksGestion();
+    const response = await fetch(gaBuildUrl('/api/gestion-academica/resumen'));
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || 'No fue posible cargar el resumen.');
+    }
+
+    const { catalogos, filtros, resumen, auditoria } = data;
+    poblarSelect('ga-grado', catalogos.grados, filtros.grado);
+    poblarSelect('ga-curso', catalogos.cursos, filtros.curso);
+
+    document.getElementById('ga-estudiantes').textContent = resumen.estudiantes ?? '-';
+    document.getElementById('ga-planes').textContent = resumen.planes ?? '-';
+    document.getElementById('ga-cargas').textContent = resumen.cargas ?? '-';
+    document.getElementById('ga-docentes').textContent = resumen.docentes ?? '-';
+    document.getElementById('ga-grupos').textContent = resumen.grupos ?? '-';
+    document.getElementById('ga-areas').textContent = resumen.areas ?? '-';
+    document.getElementById('ga-alertas').textContent = auditoria.total_alertas ?? '-';
+
+    const cobertura = resumen.planes ? Math.round((resumen.cargas / resumen.planes) * 100) : 0;
+    document.getElementById('ga-cobertura').textContent = `${cobertura}%`;
+
+    const filtrosActivos = [filtros.grado && `Grado ${filtros.grado}`, filtros.curso && `Curso ${filtros.curso}`].filter(Boolean);
+    document.getElementById('ga-filtros-activos').textContent = filtrosActivos.length ? filtrosActivos.join(' · ') : 'Sin filtros';
+    renderAuditoria(auditoria);
+    actualizarLinksGestion();
+  } catch (_error) {
+    document.getElementById('ga-estudiantes').textContent = '!';
+    document.getElementById('ga-planes').textContent = '!';
+    document.getElementById('ga-cargas').textContent = '!';
+    document.getElementById('ga-docentes').textContent = '!';
+    document.getElementById('ga-grupos').textContent = '!';
+    document.getElementById('ga-areas').textContent = '!';
+    document.getElementById('ga-alertas').textContent = '!';
+    document.getElementById('ga-cobertura').textContent = '!';
+  }
+}
+
+document.getElementById('ga-filtros-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  cargarResumenGestionAcademica();
+});
+
+document.getElementById('ga-limpiar').addEventListener('click', () => {
+  document.getElementById('ga-grado').value = '';
+  document.getElementById('ga-curso').value = '';
+  cargarResumenGestionAcademica();
+});
+
+cargarResumenGestionAcademica();
+</script>
+{% endblock %}

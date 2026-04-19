@@ -1,0 +1,18 @@
+﻿PASOS RAPIDOS SERVIDOR
+
+1) Mueve todo el contenido de Paquete_Servidor a una ruta estable, por ejemplo:
+   D:\SistemaEvaluacion
+
+2) Dentro de esa ruta debe existir la carpeta DatosCompartidos y el ejecutable sea_web.exe.
+
+3) Comparte D:\SistemaEvaluacion con nombre de recurso compartido SistemaEvaluacion.
+
+4) Verifica acceso desde otro equipo con la ruta UNC:
+   \\NOMBRE_SERVIDOR\SistemaEvaluacion\DatosCompartidos
+
+5) Dentro de DatosCompartidos debe existir sistema.db.
+    Si no tenias una base previa, este paquete ya incluye una vacia lista para inicializarse.
+
+6) Inicia el servidor web con Iniciar_Servidor_Web_SEA.cmd.
+
+7) En cada cliente, configura config_sistema en modo red con esa ruta UNC.

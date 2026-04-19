@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-3">
+	<h2 class="fw-bold mb-4"><i class="bi bi-bar-chart-line me-2"></i>Dashboard de Métricas</h2>
+	<div class="row g-3 mb-4">
+		<div class="col-6 col-lg-3">
+			<div class="card stat-card h-100 p-3">
+				<div class="text-muted small mb-1"><i class="bi bi-people me-1"></i>Estudiantes</div>
+				<div class="display-6" id="metric-estudiantes">—</div>
+			</div>
+		</div>
+		<div class="col-6 col-lg-3">
+			<div class="card stat-card h-100 p-3">
+				<div class="text-muted small mb-1"><i class="bi bi-person-badge me-1"></i>Docentes</div>
+				<div class="display-6" id="metric-docentes">—</div>
+			</div>
+		</div>
+		<div class="col-6 col-lg-3">
+			<div class="card stat-card h-100 p-3">
+				<div class="text-muted small mb-1"><i class="bi bi-question-circle me-1"></i>Preguntas</div>
+				<div class="display-6" id="metric-preguntas">—</div>
+			</div>
+		</div>
+		<div class="col-6 col-lg-3">
+			<div class="card stat-card h-100 p-3">
+				<div class="text-muted small mb-1"><i class="bi bi-clipboard2-check me-1"></i>Exámenes</div>
+				<div class="display-6" id="metric-examenes">—</div>
+			</div>
+		</div>
+	</div>
+	<div class="row g-4">
+		<div class="col-12 col-lg-7">
+			<div class="card h-100 p-4">
+				<div class="card-header mb-3"><i class="bi bi-bar-chart-fill me-2"></i>Exámenes por Área</div>
+				<canvas id="chartExamenesArea" height="120"></canvas>
+			</div>
+		</div>
+		<div class="col-12 col-lg-5">
+			<div class="card h-100 p-4">
+				<div class="card-header mb-3"><i class="bi bi-pie-chart-fill me-2"></i>Distribución de Estudiantes</div>
+				<canvas id="chartEstudiantesGrado" height="120"></canvas>
+			</div>
+		</div>
+	</div>
+</div>
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+
+// Obtener métricas reales desde la API
+fetch('/api/v1/dashboard/metrics')
+	.then(resp => resp.json())
+	.then(data => {
+		const m = (data.metrics || {});
+		document.getElementById('metric-estudiantes').textContent = m.estudiantes ?? '—';
+		document.getElementById('metric-docentes').textContent = m.docentes ?? '—';
+		document.getElementById('metric-preguntas').textContent = m.preguntas ?? '—';
+		document.getElementById('metric-examenes').textContent = m.examenes ?? '—';
+	})
+	.catch(() => {
+		// Si falla, dejar los valores en "—"
+	});
+
+// Las gráficas siguen usando datos simulados. Puedes conectar a la API cuando haya endpoints:
+const examenesPorArea = {
+	labels: ["Matemáticas", "Lenguaje", "Ciencias", "Sociales", "Inglés"],
+	data: [22, 18, 20, 16, 16]
+};
+const estudiantesPorGrado = {
+	labels: ["6°", "7°", "8°", "9°", "10°", "11°"],
+	data: [60, 70, 80, 75, 65, 70]
+};
+
+// Gráfica de barras: Exámenes por área
+const ctxArea = document.getElementById('chartExamenesArea').getContext('2d');
+new Chart(ctxArea, {
+	type: 'bar',
+	data: {
+		labels: examenesPorArea.labels,
+		datasets: [{
+			label: 'Exámenes',
+			data: examenesPorArea.data,
+			backgroundColor: '#2563eb',
+			borderRadius: 8,
+			maxBarThickness: 38
+		}]
+	},
+	options: {
+		responsive: true,
+		plugins: { legend: { display: false } },
+		scales: {
+			x: { grid: { display: false } },
+			y: { beginAtZero: true, grid: { color: '#e0eaff' } }
+		}
+	}
+});
+
+// Gráfica de pastel: Estudiantes por grado
+const ctxPie = document.getElementById('chartEstudiantesGrado').getContext('2d');
+new Chart(ctxPie, {
+	type: 'pie',
+	data: {
+		labels: estudiantesPorGrado.labels,
+		datasets: [{
+			data: estudiantesPorGrado.data,
+			backgroundColor: [
+				'#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#a5b4fc', '#818cf8'
+			]
+		}]
+	},
+	options: {
+		responsive: true,
+		plugins: { legend: { position: 'bottom' } }
+	}
+});
+</script>
+{% endblock %}
+{% endblock %}

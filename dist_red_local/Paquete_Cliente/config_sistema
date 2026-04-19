@@ -1,0 +1,8 @@
+﻿# Configuracion de despliegue del sistema de evaluacion
+# modo: local | red
+modo=red
+
+# Ruta UNC de la carpeta compartida del servidor o ruta UNC directa a sistema.db
+# Ejemplo carpeta: \\SERVIDOR_EVALUACION\SistemaEvaluacion\DatosCompartidos
+# Ejemplo archivo: \\SERVIDOR_EVALUACION\SistemaEvaluacion\DatosCompartidos\sistema.db
+ruta_servidor=\\SERVIDOR_EVALUACION\SistemaEvaluacion\DatosCompartidos

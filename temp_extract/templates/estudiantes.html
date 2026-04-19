@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% block title %}Centro de Estudiantes{% endblock %}
+
+{% block extra_head %}
+<style>
+  .students-hero {
+    background:
+      radial-gradient(circle at top right, rgba(15, 93, 184, .14), transparent 28%),
+      linear-gradient(135deg, #f8fbff 0%, #eef5ff 55%, #ffffff 100%);
+    border: 1px solid rgba(15, 93, 184, .12);
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 18px 34px rgba(22, 50, 79, .08);
+  }
+  .students-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .85rem;
+    background: rgba(15, 93, 184, .08);
+    color: #0f5db8;
+    border-radius: 999px;
+    font-size: .88rem;
+    font-weight: 700;
+  }
+  .students-kpi {
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 12px 28px rgba(22, 50, 79, .08);
+    height: 100%;
+  }
+  .students-kpi .kpi-label { color: #5f7287; font-size: .84rem; text-transform: uppercase; letter-spacing: .05em; }
+  .students-kpi .kpi-value { color: #16324f; font-size: 2rem; font-weight: 800; line-height: 1; }
+  .students-kpi.kpi-blue { background: linear-gradient(180deg, #ffffff 0%, #eef5ff 100%); }
+  .students-kpi.kpi-green { background: linear-gradient(180deg, #ffffff 0%, #effaf2 100%); }
+  .students-kpi.kpi-amber { background: linear-gradient(180deg, #ffffff 0%, #fff7e8 100%); }
+  .students-kpi.kpi-slate { background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%); }
+  .hub-card {
+    border: 1px solid rgba(15, 93, 184, .12);
+    border-radius: 20px;
+    background: #fff;
+    height: 100%;
+  }
+  .hub-card .card-body { padding: 1.25rem; }
+  .mini-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: .28rem .65rem;
+    background: #eef4fb;
+    color: #35506f;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+  .student-item {
+    border: 1px solid #e6edf6;
+    border-radius: 14px;
+    padding: .9rem 1rem;
+    background: #fff;
+  }
+  .student-item + .student-item { margin-top: .75rem; }
+  .empty-panel {
+    border: 1px dashed #cad8e8;
+    border-radius: 16px;
+    padding: 1.25rem;
+    text-align: center;
+    color: #5f7287;
+    background: #f9fbfe;
+  }
+  @media (max-width: 767px) {
+    .students-hero { padding: 1.15rem; border-radius: 18px; }
+    .students-kpi .kpi-value { font-size: 1.7rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="students-hero mb-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+      <div>
+        <div class="students-badge mb-3"><i class="bi bi-people-fill"></i> Centro operativo de estudiantes</div>
+        <h1 class="h2 fw-bold mb-1" style="color:#16324f;">Estudiantes</h1>
+        <p class="text-muted mb-0">Consolida matrícula, consulta académica y el nuevo portal web del estudiante desde un mismo frente administrativo.</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        {% if web_can_access('/matricula') %}
+        <a href="/matricula" class="btn btn-primary"><i class="bi bi-person-vcard me-1"></i>Abrir matrícula</a>
+        {% endif %}
+        {% if web_can_access('/resultados') %}
+        <a href="/resultados" class="btn btn-outline-primary"><i class="bi bi-bar-chart-line me-1"></i>Ver resultados</a>
+        {% endif %}
+        {% if web_can_access('/orientacion') %}
+        <a href="/orientacion" class="btn btn-outline-secondary"><i class="bi bi-compass me-1"></i>Orientación</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div id="studentsAlert"></div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card students-kpi kpi-blue">
+        <div class="card-body">
+          <div class="kpi-label mb-2">Estudiantes activos</div>
+          <div class="kpi-value" id="studentsTotal">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card students-kpi kpi-green">
+        <div class="card-body">
+          <div class="kpi-label mb-2">Grados detectados</div>
+          <div class="kpi-value" id="studentsGrados">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card students-kpi kpi-amber">
+        <div class="card-body">
+          <div class="kpi-label mb-2">Cursos activos</div>
+          <div class="kpi-value" id="studentsCursos">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card students-kpi kpi-slate">
+        <div class="card-body">
+          <div class="kpi-label mb-2">Con resultados</div>
+          <div class="kpi-value" id="studentsResultados">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-7">
+      <div class="card hub-card h-100">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <strong>Frentes de trabajo</strong>
+            <div class="small text-muted">Acciones principales del ciclo estudiantil en la web.</div>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="cargarCentroEstudiantes()">
+            <i class="bi bi-arrow-repeat me-1"></i>Actualizar
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="student-item h-100">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                  <div>
+                    <h3 class="h6 mb-1">Matrícula y base estudiantil</h3>
+                    <p class="small text-muted mb-0">Altas, cambios de curso, importaciones y exportaciones.</p>
+                  </div>
+                  <span class="mini-pill">Activo</span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap mt-3">
+                  {% if web_can_access('/matricula') %}
+                  <a href="/matricula" class="btn btn-primary btn-sm">Abrir módulo</a>
+                  {% endif %}
+                  {% if web_can_access_api('/api/estudiantes/exportar') %}
+                  <a href="/api/estudiantes/exportar" target="_blank" class="btn btn-outline-success btn-sm">Exportar</a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="student-item h-100">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                  <div>
+                    <h3 class="h6 mb-1">Portal del estudiante</h3>
+                    <p class="small text-muted mb-0">Evaluaciones, historial y revisión desde la sesión del estudiante.</p>
+                  </div>
+                  <span class="mini-pill">Actualizado</span>
+                </div>
+                <div class="small text-muted mt-3">El acceso operativo se hace desde la cuenta del estudiante en <strong>Mis Evaluaciones</strong>.</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="student-item h-100">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                  <div>
+                    <h3 class="h6 mb-1">Seguimiento académico</h3>
+                    <p class="small text-muted mb-0">Consulta de notas, consolidado y filtros por grado, curso y área.</p>
+                  </div>
+                  <span class="mini-pill">Activo</span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap mt-3">
+                  {% if web_can_access('/resultados') %}
+                  <a href="/resultados" class="btn btn-outline-primary btn-sm">Resultados</a>
+                  {% endif %}
+                  {% if web_can_access('/orientacion') %}
+                  <a href="/orientacion" class="btn btn-outline-secondary btn-sm">Orientación</a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="student-item h-100">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                  <div>
+                    <h3 class="h6 mb-1">Soporte documental</h3>
+                    <p class="small text-muted mb-0">Verificación de datos y emisión de certificados desde Secretaría.</p>
+                  </div>
+                  <span class="mini-pill">Parcial</span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap mt-3">
+                  {% if web_can_access('/secretaria') %}
+                  <a href="/secretaria" class="btn btn-outline-dark btn-sm">Secretaría</a>
+                  {% endif %}
+                  {% if web_can_access('/configuracion-plantel') %}
+                  <a href="/configuracion-plantel" class="btn btn-outline-secondary btn-sm">Plantel</a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-5">
+      <div class="card hub-card h-100">
+        <div class="card-header bg-white">
+          <strong>Snapshot reciente</strong>
+          <div class="small text-muted">Muestra rápida de estudiantes para control operativo.</div>
+        </div>
+        <div class="card-body">
+          <div id="studentsRecentList" class="empty-panel">Cargando estudiantes...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hub-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <strong>Accesos rápidos</strong>
+        <div class="small text-muted">Atajos administrativos para datos estudiantiles y consumo API.</div>
+      </div>
+    </div>
+    <div class="card-body d-flex flex-wrap gap-2">
+        {% if web_can_access_api('/api/estudiantes') %}
+      <a class="btn btn-outline-secondary btn-sm" href="/api/estudiantes?limit=100" target="_blank">API estudiantes</a>
+        {% endif %}
+        {% if web_can_access_api('/api/calificaciones/resumen') %}
+      <a class="btn btn-outline-secondary btn-sm" href="/api/calificaciones/resumen" target="_blank">Resumen calificaciones</a>
+        {% endif %}
+        {% if web_can_access_api('/api/estudiantes/exportar') %}
+      <a class="btn btn-outline-secondary btn-sm" href="/api/estudiantes/exportar" target="_blank">Exportar estudiantes</a>
+        {% endif %}
+        {% if web_can_access('/matricula') %}
+      <a class="btn btn-outline-secondary btn-sm" href="/matricula">Gestor de matrícula</a>
+        {% endif %}
+        {% if web_can_access('/resultados') %}
+      <a class="btn btn-outline-secondary btn-sm" href="/resultados">Panel de resultados</a>
+        {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function studentsAlert(message, level = 'warning') {
+  document.getElementById('studentsAlert').innerHTML = `
+    <div class="alert alert-${level} alert-dismissible fade show" role="alert">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+}
+
+function renderRecentStudents(items) {
+  const target = document.getElementById('studentsRecentList');
+  if (!Array.isArray(items) || !items.length) {
+    target.className = 'empty-panel';
+    target.innerHTML = 'No se encontraron estudiantes para mostrar.';
+    return;
+  }
+
+  target.className = '';
+  target.innerHTML = items.map((student) => `
+    <div class="student-item">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="fw-bold" style="color:#16324f;">${student.nombre || student.documento || 'Estudiante'}</div>
+          <div class="small text-muted">Documento: ${student.documento || '—'}</div>
+        </div>
+        <span class="mini-pill">${student.grado || '—'} · ${student.curso || '—'}</span>
+      </div>
+      <div class="small text-muted mt-2">Jornada: ${student.jornada || '—'} · Estado: ${student.estado || 'Activo'}</div>
+    </div>
+  `).join('');
+}
+
+async function cargarCentroEstudiantes() {
+  document.getElementById('studentsAlert').innerHTML = '';
+  try {
+    const estudiantesResp = await fetch('/api/estudiantes?limit=50');
+    const puedeVerResultados = {{ 'true' if web_can_access_api('/api/calificaciones/resumen') else 'false' }};
+    const resultadosResp = puedeVerResultados ? await fetch('/api/calificaciones/resumen') : null;
+
+    const estudiantesData = await estudiantesResp.json();
+    const resultadosData = resultadosResp && resultadosResp.ok ? await resultadosResp.json() : { resumen: [] };
+
+    if (!estudiantesResp.ok || !estudiantesData.ok) {
+      throw new Error(estudiantesData.error || 'No fue posible cargar los estudiantes.');
+    }
+
+    const estudiantes = Array.isArray(estudiantesData.estudiantes) ? estudiantesData.estudiantes : [];
+    const grados = new Set(estudiantes.map(item => String(item.grado || '').trim()).filter(Boolean));
+    const cursos = new Set(estudiantes.map(item => `${String(item.grado || '').trim()}-${String(item.curso || '').trim()}`).filter(item => item !== '-'));
+    const resumen = Array.isArray(resultadosData.resumen) ? resultadosData.resumen : [];
+    const estudiantesConResultados = new Set(
+      resumen
+        .map(item => String(item.documento || '').trim())
+        .filter(Boolean)
+    );
+
+    document.getElementById('studentsTotal').textContent = estudiantesData.total ?? estudiantes.length;
+    document.getElementById('studentsGrados').textContent = grados.size;
+    document.getElementById('studentsCursos').textContent = cursos.size;
+    document.getElementById('studentsResultados').textContent = estudiantesConResultados.size;
+
+    renderRecentStudents(estudiantes.slice(0, 8));
+  } catch (error) {
+    studentsAlert(error.message || 'No fue posible cargar el centro de estudiantes.', 'danger');
+    renderRecentStudents([]);
+    document.getElementById('studentsTotal').textContent = '!';
+    document.getElementById('studentsGrados').textContent = '!';
+    document.getElementById('studentsCursos').textContent = '!';
+    document.getElementById('studentsResultados').textContent = '!';
+  }
+}
+
+cargarCentroEstudiantes();
+</script>
+{% endblock %}

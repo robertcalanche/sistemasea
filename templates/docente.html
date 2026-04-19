@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+{% block title %}{% if maestro_mode %}Acceso Maestro{% else %}Panel Docente{% endif %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .docente-layout .card { border-radius: 12px; }
+  .docente-layout .table thead th { white-space: nowrap; }
+  .docente-layout .sticky-actions { position: sticky; top: 0; z-index: 10; background: #f4f6fb; }
+  .row-action-btn { padding: .2rem .5rem; }
+  .metric-card .metric-value { font-size: 1.8rem; font-weight: 700; color: var(--sea-primary); }
+  .estado-no-presentado { color: #6c757d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="docente-layout">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+        <i class="bi {% if maestro_mode %}bi-shield-lock{% else %}bi-person-workspace{% endif %} me-2"></i>{% if maestro_mode %}Acceso Maestro{% else %}Panel Docente{% endif %}
+      </h2>
+      <p class="text-muted mb-0 small">{% if maestro_mode %}Seguimiento de resultados, detalle de intentos, autorizaciones y reseteo administrativo.{% else %}Configuración de evaluaciones, seguimiento de estudiantes y acciones del módulo docente{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="/docente/autoevaluacion" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-journal-check me-1"></i>Autoevaluación docente
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card metric-card h-100 p-3">
+        <div class="small text-muted mb-1">Estudiantes listados</div>
+        <div class="metric-value" id="metric-estudiantes">0</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card metric-card h-100 p-3">
+        <div class="small text-muted mb-1">Exámenes presentados</div>
+        <div class="metric-value" id="metric-presentados">0</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card metric-card h-100 p-3">
+        <div class="small text-muted mb-1">Pendientes</div>
+        <div class="metric-value" id="metric-pendientes">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><i class="bi bi-gear me-2"></i>Configuración de Examen</div>
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Grado</label>
+          <select class="form-select form-select-sm" id="cfgGrado">
+            <option value="">Seleccione</option>
+            {% for g in grados %}
+            <option value="{{ g }}">{{ g }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Curso</label>
+          <select class="form-select form-select-sm" id="cfgCurso">
+            <option value="">Seleccione</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Área</label>
+          <select class="form-select form-select-sm" id="cfgArea">
+            <option value="">Seleccione</option>
+            {% for a in areas %}
+            <option value="{{ a }}">{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Evaluación</label>
+          <select class="form-select form-select-sm" id="cfgEvaluacion">
+            <option value="">Seleccione</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label small fw-semibold">Min</label>
+          <input class="form-control form-control-sm" id="cfgDuracion" type="number" min="1" value="2" />
+        </div>
+        <div class="col-md-1">
+          <label class="form-label small fw-semibold">Preg.</label>
+          <input class="form-control form-control-sm" id="cfgCantidad" type="number" min="1" value="10" />
+        </div>
+        <div class="col-md-1">
+          <label class="form-label small fw-semibold">Intentos</label>
+          <input class="form-control form-control-sm" id="cfgIntentos" type="number" min="1" value="1" />
+        </div>
+        <div class="col-md-1 d-flex gap-3 pt-4">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="cfgReintentos" checked>
+            <label class="form-check-label small" for="cfgReintentos">Reint.</label>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="cfgHabilitado">
+            <label class="form-check-label small" for="cfgHabilitado">Activo</label>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex justify-content-end mt-3 gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick="cargarConfigActual()">
+          <i class="bi bi-arrow-repeat me-1"></i>Cargar actual
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="guardarConfigDocente()">
+          <i class="bi bi-save me-1"></i>Guardar configuración
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3 sticky-actions">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Grado</label>
+          <select class="form-select form-select-sm" id="fltGrado">
+            <option value="">Todos</option>
+            {% for g in grados %}
+            <option value="{{ g }}">{{ g }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Curso</label>
+          <select class="form-select form-select-sm" id="fltCurso">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Área</label>
+          <select class="form-select form-select-sm" id="fltArea">
+            <option value="">Todas</option>
+            {% for a in areas %}
+            <option value="{{ a }}">{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Evaluación</label>
+          <select class="form-select form-select-sm" id="fltEvaluacion">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2 flex-wrap justify-content-md-end">
+          <button class="btn btn-primary btn-sm" onclick="cargarPanelDocente()"><i class="bi bi-search me-1"></i>Buscar</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="limpiarFiltrosDocente()"><i class="bi bi-x-circle me-1"></i>Limpiar</button>
+          <button class="btn btn-success btn-sm" onclick="exportarReporte()"><i class="bi bi-file-earmark-excel me-1"></i>Exportar</button>
+          <button class="btn btn-info btn-sm text-white" onclick="exportarConsolidado()"><i class="bi bi-table me-1"></i>Consolidado</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><i class="bi bi-table me-2"></i>Seguimiento de Estudiantes</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle small mb-0">
+          <thead>
+            <tr>
+              <th>Grado</th>
+              <th>Curso</th>
+              <th>Estudiante</th>
+              <th>Documento</th>
+              <th>Área</th>
+              <th>Evaluación</th>
+              <th>Nota</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+              <th>Duración</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="docenteBody">
+            <tr><td colspan="11" class="text-center text-muted py-4">Cargando datos...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="detalleModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Detalle del Intento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detalleBody">
+        <div class="text-muted">Cargando...</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const stateDocente = { registros: [] };
+
+function paramsFiltros(prefix) {
+  return {
+    grado: document.getElementById(prefix + 'Grado').value,
+    curso: document.getElementById(prefix + 'Curso').value,
+    area: document.getElementById(prefix + 'Area').value,
+    evaluacion: document.getElementById(prefix + 'Evaluacion').value,
+  };
+}
+
+async function fetchJson(url, opts = {}) {
+  const resp = await fetch(url, opts);
+  return await resp.json();
+}
+
+async function cargarCursos(selectId, grado) {
+  const sel = document.getElementById(selectId);
+  const emptyText = selectId.startsWith('cfg') ? 'Seleccione' : 'Todos';
+  sel.innerHTML = `<option value="">${emptyText}</option>`;
+  try {
+    const data = await fetchJson(`/api/docente/cursos?grado=${encodeURIComponent(grado || '')}`);
+    (data.cursos || []).forEach(curso => {
+      const opt = document.createElement('option');
+      opt.value = curso;
+      opt.textContent = curso;
+      sel.appendChild(opt);
+    });
+  } catch (e) {}
+}
+
+async function cargarEvaluaciones(prefix) {
+  const grado = document.getElementById(prefix + 'Grado').value;
+  const area = document.getElementById(prefix + 'Area').value;
+  const sel = document.getElementById(prefix + 'Evaluacion');
+  const emptyText = prefix === 'cfg' ? 'Seleccione' : 'Todas';
+  sel.innerHTML = `<option value="">${emptyText}</option>`;
+  if (!grado || !area) return;
+  try {
+    const data = await fetchJson(`/api/banco-preguntas/evaluaciones?grado=${encodeURIComponent(grado)}&area=${encodeURIComponent(area)}`);
+    (data.evaluaciones || []).forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item;
+      opt.textContent = item;
+      sel.appendChild(opt);
+    });
+  } catch (e) {}
+}
+
+async function cargarConfigActual() {
+  const { grado, curso, area, evaluacion } = paramsFiltros('cfg');
+  if (!area) { alert('Seleccione un área.'); return; }
+  const qs = new URLSearchParams();
+  if (grado) qs.append('grado', grado);
+  if (curso) qs.append('curso', curso);
+  if (area) qs.append('area', area);
+  if (evaluacion) qs.append('evaluacion', evaluacion);
+  const data = await fetchJson(`/api/examenes/config?${qs}`);
+  if (!data.ok) { alert(data.error || 'No se pudo cargar la configuración'); return; }
+  const cfg = data.config || {};
+  document.getElementById('cfgDuracion').value = Math.max(1, Math.floor((cfg.duracion_segundos || 120) / 60));
+  document.getElementById('cfgCantidad').value = cfg.cantidad_preguntas || 10;
+  document.getElementById('cfgIntentos').value = cfg.max_intentos || 1;
+  document.getElementById('cfgReintentos').checked = !!cfg.permitir_reintentos;
+  document.getElementById('cfgHabilitado').checked = !!cfg.habilitado;
+}
+
+async function guardarConfigDocente() {
+  const payload = {
+    grado: document.getElementById('cfgGrado').value,
+    curso: document.getElementById('cfgCurso').value,
+    area: document.getElementById('cfgArea').value,
+    evaluacion: document.getElementById('cfgEvaluacion').value,
+    duracion_min: document.getElementById('cfgDuracion').value,
+    cantidad_preguntas: document.getElementById('cfgCantidad').value,
+    max_intentos: document.getElementById('cfgIntentos').value,
+    permitir_reintentos: document.getElementById('cfgReintentos').checked,
+    habilitado: document.getElementById('cfgHabilitado').checked,
+  };
+  const data = await fetchJson('/api/docente/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!data.ok) { alert(data.error || 'No se pudo guardar'); return; }
+  alert('Configuración guardada correctamente.');
+}
+
+function renderMetrics(registros) {
+  const total = registros.length;
+  const presentados = registros.filter(r => r.estado_examen && r.estado_examen !== 'EXAMEN NO PRESENTADO').length;
+  const pendientes = total - presentados;
+  document.getElementById('metric-estudiantes').textContent = total;
+  document.getElementById('metric-presentados').textContent = presentados;
+  document.getElementById('metric-pendientes').textContent = pendientes;
+}
+
+function notaHtml(nota) {
+  const n = parseFloat(nota);
+  if (Number.isNaN(n)) return '<span class="text-muted">—</span>';
+  const cls = n >= 3 ? 'bg-success' : n >= 2 ? 'bg-warning text-dark' : 'bg-danger';
+  return `<span class="badge ${cls}">${n.toFixed(2)}</span>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
+}
+
+function accionesFila(row) {
+  const tieneResultado = row.estado_examen && row.estado_examen !== 'EXAMEN NO PRESENTADO' && row.area;
+  const btnDetalle = tieneResultado
+    ? `<button class="btn btn-outline-primary btn-sm row-action-btn" onclick="verDetalle('${escapeHtml(row.documento)}','${escapeHtml(row.area)}',${row.intento || 'null'})"><i class="bi bi-eye"></i></button>`
+    : '';
+  const btnRevision = tieneResultado
+    ? `<button class="btn btn-outline-success btn-sm row-action-btn" onclick="autorizarRevision('${escapeHtml(row.documento)}','${escapeHtml(row.area)}')"><i class="bi bi-stars"></i></button>`
+    : '';
+  const btnReset = tieneResultado
+    ? `<button class="btn btn-outline-warning btn-sm row-action-btn" onclick="resetearIntento('${escapeHtml(row.documento)}','${escapeHtml(row.area)}')"><i class="bi bi-arrow-counterclockwise"></i></button>`
+    : '';
+  return `<div class="d-flex gap-1">${btnDetalle}${btnRevision}${btnReset}</div>` || '<span class="text-muted">—</span>';
+}
+
+async function cargarPanelDocente() {
+  const tbody = document.getElementById('docenteBody');
+  tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+  const filtros = paramsFiltros('flt');
+  const qs = new URLSearchParams();
+  Object.entries(filtros).forEach(([k, v]) => { if (v) qs.append(k, v); });
+  const data = await fetchJson(`/api/docente/panel?${qs}`);
+  if (!data.ok) {
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-danger py-4">Error al cargar datos</td></tr>';
+    return;
+  }
+  const registros = data.registros || [];
+  stateDocente.registros = registros;
+  renderMetrics(registros);
+  if (!registros.length) {
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">Sin resultados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = registros.map(row => `
+    <tr>
+      <td>${escapeHtml(row.grado)}</td>
+      <td>${escapeHtml(row.curso)}</td>
+      <td>${escapeHtml(row.nombre)}</td>
+      <td><small>${escapeHtml(row.documento)}</small></td>
+      <td>${escapeHtml(row.area)}</td>
+      <td>${escapeHtml(row.evaluacion)}</td>
+      <td>${notaHtml(row.nota)}</td>
+      <td><span class="${row.estado_examen === 'EXAMEN NO PRESENTADO' ? 'estado-no-presentado' : ''}">${escapeHtml(row.estado_examen)}</span></td>
+      <td><small>${escapeHtml((row.fecha || '').substring(0,16))}</small></td>
+      <td><small>${escapeHtml(row.duracion)}</small></td>
+      <td>${accionesFila(row)}</td>
+    </tr>
+  `).join('');
+}
+
+async function autorizarRevision(documento, area) {
+  if (!confirm(`¿Autorizar revisión para ${documento} en ${area}?`)) return;
+  const data = await fetchJson('/api/docente/autorizar-revision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ documento, area }),
+  });
+  if (!data.ok) { alert(data.error || 'No se pudo autorizar'); return; }
+  await cargarPanelDocente();
+}
+
+async function resetearIntento(documento, area) {
+  if (!confirm(`¿Resetear el intento del estudiante ${documento} en ${area}?`)) return;
+  const data = await fetchJson('/api/docente/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ documento, area }),
+  });
+  if (!data.ok) { alert(data.error || 'No se pudo resetear'); return; }
+  await cargarPanelDocente();
+}
+
+async function verDetalle(documento, area, intento) {
+  const qs = new URLSearchParams({ documento, area });
+  if (intento) qs.append('intento', intento);
+  const data = await fetchJson(`/api/docente/detalle?${qs}`);
+  const body = document.getElementById('detalleBody');
+  if (!data.ok) {
+    body.innerHTML = `<div class="alert alert-danger mb-0">${escapeHtml(data.error || 'No se pudo cargar el detalle')}</div>`;
+  } else if (!(data.respuestas || []).length) {
+    body.innerHTML = '<div class="alert alert-warning mb-0">No hay respuestas registradas para este intento.</div>';
+  } else {
+    body.innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead><tr><th>#</th><th>Pregunta</th><th>Tu respuesta</th><th>Correcta</th><th>Estado</th></tr></thead>
+          <tbody>
+            ${(data.respuestas || []).map((r, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${escapeHtml(r.enunciado || '')}</td>
+                <td>${escapeHtml(r.respuesta_seleccionada_texto || r.respuesta_seleccionada || '')}</td>
+                <td>${escapeHtml(r.respuesta_correcta_texto || r.respuesta_correcta || '')}</td>
+                <td>${r.es_correcta ? '<span class="badge bg-success">Correcta</span>' : '<span class="badge bg-danger">Incorrecta</span>'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+  new bootstrap.Modal(document.getElementById('detalleModal')).show();
+}
+
+function exportarReporte() {
+  const filtros = paramsFiltros('flt');
+  const qs = new URLSearchParams();
+  Object.entries(filtros).forEach(([k, v]) => { if (v) qs.append(k, v); });
+  window.open(`/api/docente/exportar?${qs.toString()}`, '_blank');
+}
+
+function exportarConsolidado() {
+  const filtros = paramsFiltros('flt');
+  if (!filtros.grado || !filtros.area) {
+    alert('Para exportar el consolidado debes seleccionar grado y área.');
+    return;
+  }
+  const qs = new URLSearchParams();
+  qs.append('grado', filtros.grado);
+  qs.append('area', filtros.area);
+  if (filtros.curso) qs.append('curso', filtros.curso);
+  window.open(`/api/docente/exportar-consolidado?${qs.toString()}`, '_blank');
+}
+
+function limpiarFiltrosDocente() {
+  ['fltGrado','fltCurso','fltArea','fltEvaluacion'].forEach(id => document.getElementById(id).value = '');
+  cargarPanelDocente();
+}
+
+document.getElementById('cfgGrado').addEventListener('change', async () => {
+  await cargarCursos('cfgCurso', document.getElementById('cfgGrado').value);
+  await cargarEvaluaciones('cfg');
+});
+document.getElementById('cfgArea').addEventListener('change', () => cargarEvaluaciones('cfg'));
+document.getElementById('fltGrado').addEventListener('change', async () => {
+  await cargarCursos('fltCurso', document.getElementById('fltGrado').value);
+  await cargarEvaluaciones('flt');
+});
+document.getElementById('fltArea').addEventListener('change', () => cargarEvaluaciones('flt'));
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await Promise.all([
+    cargarCursos('cfgCurso', ''),
+    cargarCursos('fltCurso', ''),
+  ]);
+  await cargarPanelDocente();
+});
+</script>
+{% endblock %}

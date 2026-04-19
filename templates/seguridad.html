@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Seguridad | SEA{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h1 class="h3 mb-1">Acceso Maestro y Seguridad</h1>
+            <p class="text-muted mb-0">Gestiona la clave maestra del sistema.</p>
+        </div>
+        <a href="{{ url_for('web_superadmin') }}" class="btn btn-outline-secondary">Volver a SuperAdmin</a>
+    </div>
+
+    <div id="alerta" class="alert d-none" role="alert"></div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light"><strong>Estado actual</strong></div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-12 col-md-4">
+                    <div class="border rounded p-3">
+                        <div class="small text-muted">Clave maestra configurada</div>
+                        <div class="fw-bold" id="estadoMaster">Cargando...</div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="border rounded p-3">
+                        <div class="small text-muted">Longitud actual</div>
+                        <div class="fw-bold" id="longitudMaster">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-light"><strong>Cambiar clave maestra</strong></div>
+        <div class="card-body">
+            <form id="formClave" class="row g-2">
+                <div class="col-12 col-md-4">
+                    <label for="claveActual" class="form-label">Clave actual</label>
+                    <input type="password" id="claveActual" class="form-control" autocomplete="current-password">
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="claveNueva" class="form-label">Nueva clave</label>
+                    <input type="password" id="claveNueva" class="form-control" minlength="6" required autocomplete="new-password">
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="claveConfirmar" class="form-label">Confirmar nueva clave</label>
+                    <input type="password" id="claveConfirmar" class="form-control" minlength="6" required autocomplete="new-password">
+                </div>
+                <div class="col-12 d-grid mt-2">
+                    <button type="submit" class="btn btn-primary">Actualizar clave maestra</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+<script>
+(() => {
+    const alerta = document.getElementById("alerta");
+
+    function show(type, message) {
+        alerta.className = `alert alert-${type}`;
+        alerta.textContent = message;
+        alerta.classList.remove("d-none");
+    }
+
+    function clear() {
+        alerta.classList.add("d-none");
+        alerta.textContent = "";
+    }
+
+    async function cargarResumen() {
+        const r = await fetch("/api/seguridad/resumen");
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            show("danger", data.error || "No se pudo cargar el estado de seguridad.");
+            return;
+        }
+        document.getElementById("estadoMaster").textContent = data.master_key_configurada ? "Si" : "No";
+        document.getElementById("longitudMaster").textContent = String(data.longitud || 0);
+    }
+
+    document.getElementById("formClave").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clear();
+
+        const payload = {
+            clave_actual: document.getElementById("claveActual").value,
+            clave_nueva: document.getElementById("claveNueva").value,
+            clave_confirmar: document.getElementById("claveConfirmar").value,
+        };
+
+        const r = await fetch("/api/seguridad/cambiar-clave", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const data = await r.json().catch(() => ({}));
+
+        if (!r.ok) {
+            show("danger", data.error || "No se pudo actualizar la clave maestra.");
+            return;
+        }
+
+        show("success", data.mensaje || "Clave maestra actualizada.");
+        document.getElementById("formClave").reset();
+        await cargarResumen();
+    });
+
+    cargarResumen();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+{% block title %}Resultados{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-clipboard-data me-2"></i>Resultados
+    </h2>
+    <p class="text-muted mb-0 small">Panel consolidado para revisar rendimiento, exportar evidencias y detectar grupos con mayor atencion.</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if web_can_access_api('/api/examenes/') %}
+    <a href="/api/v1/examenes/descargar_todos" class="btn btn-primary btn-sm" download>
+      <i class="bi bi-file-earmark-pdf me-1"></i>PDFs generados
+    </a>
+    {% endif %}
+    {% if web_can_access('/calificaciones') %}
+    <a href="/calificaciones" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-bar-chart-line me-1"></i>Ir a Calificaciones
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-journal-check me-1"></i>Registros</div>
+      <div class="display-6" id="res-total">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-graph-up-arrow me-1"></i>Promedio general</div>
+      <div class="display-6" id="res-promedio">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-diagram-3 me-1"></i>Areas activas</div>
+      <div class="display-6" id="res-areas">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Alertas</div>
+      <div class="display-6" id="res-alertas">-</div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold">Grado</label>
+        <select class="form-select form-select-sm" id="filtroGrado">
+          <option value="">Todos</option>
+          {% for g in grados %}
+          <option value="{{ g }}">{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">Area</label>
+        <select class="form-select form-select-sm" id="filtroArea">
+          <option value="">Todas</option>
+          {% for a in areas %}
+          <option value="{{ a }}">{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold">Curso</label>
+        <select class="form-select form-select-sm" id="filtroCurso">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold">Evaluacion</label>
+        <select class="form-select form-select-sm" id="filtroEvaluacion">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">Documento</label>
+        <input type="text" class="form-control form-control-sm" id="filtroDocumento" placeholder="Documento del estudiante" />
+      </div>
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-primary btn-sm" id="btnBuscarResultados">
+          <i class="bi bi-search me-1"></i>Actualizar
+        </button>
+      </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap mt-3">
+      <a class="btn btn-outline-secondary btn-sm" href="#" target="_blank" id="btnResumenApiResultados">
+        <i class="bi bi-file-earmark-bar-graph me-1"></i>Resumen API
+      </a>
+      <button class="btn btn-outline-secondary btn-sm" id="btnExportarConsolidado">
+        <i class="bi bi-file-earmark-excel me-1"></i>Consolidado Excel
+      </button>
+      <a class="btn btn-outline-secondary btn-sm" href="#" target="_blank" id="btnExportarResultados">
+        <i class="bi bi-download me-1"></i>Reporte docente
+      </a>
+    </div>
+    <div class="small text-muted mt-2" id="resultadoExportacion"></div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-5">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-pie-chart me-2"></i>Resumen por area y grado</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover small mb-0">
+            <thead>
+              <tr>
+                <th>Grado</th>
+                <th>Area</th>
+                <th>Total</th>
+                <th>Promedio</th>
+              </tr>
+            </thead>
+            <tbody id="tablaResumenBody">
+              <tr><td colspan="4" class="text-center text-muted py-4">Cargando resumen...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-7">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-list-ul me-2"></i>Detalle reciente</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover small mb-0">
+            <thead>
+              <tr>
+                <th>Documento</th>
+                <th>Estudiante</th>
+                <th>Grado</th>
+                <th>Curso</th>
+                <th>Area</th>
+                <th>Evaluacion</th>
+                <th>Nota</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaResultadosBody">
+              <tr><td colspan="9" class="text-center text-muted py-4">Cargando resultados...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><i class="bi bi-signpost-split me-2"></i>Acciones sugeridas</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <h3 class="h6 mb-2">Intervencion por alertas</h3>
+          <p class="small text-muted mb-3">Identifica estudiantes o grupos con notas por debajo del umbral operativo.</p>
+          {% if web_can_access('/orientacion') %}
+          <a href="/orientacion" class="btn btn-outline-primary btn-sm">Abrir Orientación</a>
+          {% else %}
+          <span class="badge bg-light text-muted border">No disponible para este rol</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <h3 class="h6 mb-2">Seguimiento docente</h3>
+          <p class="small text-muted mb-3">Revisa detalle por estudiante, intento y respuestas desde el panel docente.</p>
+          {% if web_can_access('/docente') %}
+          <a href="/docente" class="btn btn-outline-primary btn-sm">Abrir Panel Docente</a>
+          {% else %}
+          <span class="badge bg-light text-muted border">No disponible para este rol</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+          <h3 class="h6 mb-2">Control institucional</h3>
+          <p class="small text-muted mb-3">Contrasta resultados con matrícula y carga académica para decisiones de gestión.</p>
+          {% if web_can_access('/gestion-academica') %}
+          <a href="/gestion-academica" class="btn btn-outline-primary btn-sm">Abrir Gestión Académica</a>
+          {% else %}
+          <span class="badge bg-light text-muted border">No disponible para este rol</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="detalleResultadoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title mb-0" id="detalleResultadoTitulo">Detalle del estudiante</h5>
+          <div class="small text-muted" id="detalleResultadoMeta"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="detalleResultadoEstado" class="small text-muted mb-3">Selecciona un registro para revisar su detalle.</div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Pregunta</th>
+                <th>Respuesta estudiante</th>
+                <th>Respuesta correcta</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="detalleResultadoBody">
+              <tr><td colspan="5" class="text-center text-muted py-4">Sin detalle cargado</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let detalleResultadoModal = null;
+
+function estadoBadge(estado) {
+  const valor = String(estado || '').trim().toUpperCase();
+  if (!valor) return '<span class="badge bg-secondary">-</span>';
+  const cls = valor === 'FINALIZADO' ? 'bg-success' : 'bg-warning text-dark';
+  return `<span class="badge ${cls}">${valor}</span>`;
+}
+
+function notaBadge(nota) {
+  const numero = Number(nota || 0);
+  if (!Number.isFinite(numero)) return '<span class="badge bg-secondary">-</span>';
+  const cls = numero >= 4 ? 'bg-success' : numero >= 3 ? 'bg-warning text-dark' : 'bg-danger';
+  return `<span class="badge ${cls}">${numero.toFixed(1)}</span>`;
+}
+
+function filtrosActuales() {
+  return {
+    grado: document.getElementById('filtroGrado').value,
+    area: document.getElementById('filtroArea').value,
+    evaluacion: document.getElementById('filtroEvaluacion').value,
+    documento: document.getElementById('filtroDocumento').value.trim(),
+    curso: document.getElementById('filtroCurso').value,
+  };
+}
+
+function llenarSelect(selectId, items, emptyLabel, selectedValue = '') {
+  const select = document.getElementById(selectId);
+  const actual = selectedValue || select.value;
+  select.innerHTML = `<option value="">${emptyLabel}</option>` + items.map(item => {
+    const value = String(item || '').trim();
+    const selected = value === actual ? ' selected' : '';
+    return `<option value="${value}"${selected}>${value}</option>`;
+  }).join('');
+}
+
+async function cargarCursos() {
+  // Obtiene los cursos disponibles para el grado seleccionado usando la API de resultados
+  const grado = document.getElementById('filtroGrado').value;
+  const area = document.getElementById('filtroArea').value;
+  const query = new URLSearchParams({ grado, area, limit: 1 });
+  const resp = await fetch(`/api/resultados/panel?${query}`);
+  const data = await resp.json();
+  const cursos = Array.isArray(data.catalogos?.cursos) ? data.catalogos.cursos : [];
+  llenarSelect('filtroCurso', cursos, 'Todos');
+}
+
+async function cargarEvaluaciones() {
+  // Obtiene las evaluaciones disponibles para el grado y área seleccionados usando la API de resultados
+  const grado = document.getElementById('filtroGrado').value;
+  const area = document.getElementById('filtroArea').value;
+  const query = new URLSearchParams({ grado, area, limit: 1 });
+  const resp = await fetch(`/api/resultados/panel?${query}`);
+  const data = await resp.json();
+  const evaluaciones = Array.isArray(data.catalogos?.evaluaciones) ? data.catalogos.evaluaciones : [];
+  llenarSelect('filtroEvaluacion', evaluaciones, 'Todas');
+}
+
+function construirQuery(extra = {}) {
+  const filtros = { ...filtrosActuales(), ...extra };
+  const params = new URLSearchParams();
+  Object.entries(filtros).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      params.append(key, value);
+    }
+  });
+  return params.toString();
+}
+
+function actualizarAccesosResultados() {
+  const query = construirQuery();
+  const sufijo = query ? `?${query}` : '';
+  document.getElementById('btnResumenApiResultados').href = `/api/resultados/panel${sufijo}`;
+  document.getElementById('btnExportarResultados').href = `/api/resultados/exportar${sufijo}`;
+}
+
+async function cargarResultados() {
+  const resumenBody = document.getElementById('tablaResumenBody');
+  const resultadosBody = document.getElementById('tablaResultadosBody');
+  resumenBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Cargando resumen...</td></tr>';
+  resultadosBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Cargando resultados...</td></tr>';
+
+  try {
+    const query = construirQuery({ limit: 50, offset: 0 });
+    const response = await fetch(`/api/resultados/panel${query ? `?${query}` : ''}`);
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || 'No fue posible cargar resultados');
+    }
+
+    const resumen = Array.isArray(data.resumen) ? data.resumen : [];
+    const detalles = Array.isArray(data.resultados) ? data.resultados : [];
+    const metricas = data.metricas || {};
+
+    llenarSelect('filtroCurso', Array.isArray(data.catalogos?.cursos) ? data.catalogos.cursos : [], 'Todos', data.filtros?.curso || '');
+    llenarSelect('filtroEvaluacion', Array.isArray(data.catalogos?.evaluaciones) ? data.catalogos.evaluaciones : [], 'Todas', data.filtros?.evaluacion || '');
+
+    document.getElementById('res-total').textContent = metricas.registros ?? data.total ?? 0;
+    document.getElementById('res-promedio').textContent = Number(metricas.promedio_general || 0) ? Number(metricas.promedio_general || 0).toFixed(1) : '-';
+    document.getElementById('res-areas').textContent = metricas.areas_activas ?? 0;
+    document.getElementById('res-alertas').textContent = metricas.alertas ?? 0;
+    actualizarAccesosResultados();
+
+    if (!resumen.length) {
+      resumenBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Sin resumen disponible</td></tr>';
+    } else {
+      resumenBody.innerHTML = resumen.slice(0, 12).map(item => `
+        <tr>
+          <td>${item.grado ?? ''}</td>
+          <td>${item.area ?? ''}</td>
+          <td><span class="badge bg-secondary">${item.total ?? 0}</span></td>
+          <td><strong>${item.promedio ?? ''}</strong></td>
+        </tr>
+      `).join('');
+    }
+
+    if (!detalles.length) {
+      resultadosBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Sin resultados para los filtros actuales</td></tr>';
+    } else {
+      resultadosBody.innerHTML = detalles.map(item => `
+        <tr>
+          <td><small>${item.documento ?? ''}</small></td>
+          <td>${item.nombre ?? ''}</td>
+          <td><span class="badge bg-secondary">${item.grado ?? ''}</span></td>
+          <td>${item.curso ?? ''}</td>
+          <td>${item.area ?? ''}</td>
+          <td><small class="text-muted">${item.evaluacion ?? ''}</small></td>
+          <td>${notaBadge(item.nota)}</td>
+          <td>${estadoBadge(item.estado_examen)}</td>
+          <td>
+            <button
+              class="btn btn-outline-primary btn-sm"
+              onclick="verDetalleResultado('${String(item.documento ?? '').replace(/'/g, "\\'")}', '${String(item.area ?? '').replace(/'/g, "\\'")}', '${String(item.intento ?? '').replace(/'/g, "\\'")}', '${String(item.nombre ?? '').replace(/'/g, "\\'")}')">
+              <i class="bi bi-eye"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  } catch (_error) {
+    resumenBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">No fue posible cargar el resumen</td></tr>';
+    resultadosBody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-4">No fue posible cargar los resultados</td></tr>';
+    document.getElementById('res-total').textContent = '!';
+    document.getElementById('res-promedio').textContent = '!';
+    document.getElementById('res-areas').textContent = '!';
+    document.getElementById('res-alertas').textContent = '!';
+  }
+}
+
+function textoPregunta(item, index) {
+  return item.enunciado || item.pregunta || item.texto || item.item || `Pregunta ${index + 1}`;
+}
+
+function textoRespuesta(item, keys) {
+  for (const key of keys) {
+    const value = item[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return String(value);
+    }
+  }
+  return '-';
+}
+
+function estadoRespuesta(item) {
+  if (item.es_correcta === true || item.correcta === true) {
+    return '<span class="badge bg-success">Correcta</span>';
+  }
+  if (item.es_correcta === false || item.correcta === false) {
+    return '<span class="badge bg-danger">Incorrecta</span>';
+  }
+  return '<span class="badge bg-secondary">Sin clasificar</span>';
+}
+
+async function verDetalleResultado(documento, area, intento, nombre) {
+  const body = document.getElementById('detalleResultadoBody');
+  const titulo = document.getElementById('detalleResultadoTitulo');
+  const meta = document.getElementById('detalleResultadoMeta');
+  const estado = document.getElementById('detalleResultadoEstado');
+
+  titulo.textContent = `Detalle de ${nombre || documento}`;
+  meta.textContent = `Documento ${documento || '-'} | Area ${area || '-'} | Intento ${intento || '-'}`;
+  estado.textContent = 'Cargando detalle del estudiante...';
+  body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Consultando respuestas...</td></tr>';
+
+  if (!detalleResultadoModal) {
+    detalleResultadoModal = new bootstrap.Modal(document.getElementById('detalleResultadoModal'));
+  }
+  detalleResultadoModal.show();
+
+  try {
+    // Llamada al nuevo endpoint RESTful con path parameters
+    const url = `/api/resultados/detalle/${encodeURIComponent(documento)}/${encodeURIComponent(area)}/_/${encodeURIComponent(intento)}`;
+    // Si la evaluación es relevante, reemplazar '_' por el valor real
+    // Aquí se usa '_' como comodín si no hay evaluación específica
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const respuestas = Array.isArray(data.respuestas) ? data.respuestas : [];
+
+    if (!respuestas.length) {
+      estado.textContent = 'No hay respuestas registradas para este estudiante con los filtros actuales.';
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Sin detalle disponible</td></tr>';
+      return;
+    }
+
+    estado.textContent = `${respuestas.length} respuestas registradas.`;
+    body.innerHTML = respuestas.map((item, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${textoPregunta(item, index)}</td>
+        <td>${textoRespuesta(item, ['respuesta_estudiante', 'respuesta', 'respuesta_marcada', 'seleccion'])}</td>
+        <td>${textoRespuesta(item, ['respuesta_correcta', 'correcta', 'opcion_correcta'])}</td>
+        <td>${estadoRespuesta(item)}</td>
+      </tr>
+    `).join('');
+  } catch (_error) {
+    estado.textContent = 'No fue posible cargar el detalle del estudiante.';
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Error al consultar el detalle</td></tr>';
+  }
+}
+
+function exportarConsolidado() {
+  const filtros = filtrosActuales();
+  const estado = document.getElementById('resultadoExportacion');
+  if (!filtros.grado || !filtros.area) {
+    estado.textContent = 'Para exportar consolidado debes seleccionar grado y area.';
+    return;
+  }
+
+  const query = construirQuery({ curso: filtros.curso || undefined });
+  window.open(`/api/resultados/exportar-consolidado?${query}`, '_blank');
+  estado.textContent = 'Se solicito la exportacion consolidada en una nueva pestaña.';
+}
+
+document.getElementById('btnBuscarResultados').addEventListener('click', cargarResultados);
+document.getElementById('btnExportarConsolidado').addEventListener('click', exportarConsolidado);
+document.getElementById('filtroGrado').addEventListener('change', async () => {
+  await cargarCursos();
+  await cargarEvaluaciones();
+  cargarResultados();
+});
+document.getElementById('filtroArea').addEventListener('change', async () => {
+  await cargarEvaluaciones();
+  cargarResultados();
+});
+document.getElementById('filtroCurso').addEventListener('change', cargarResultados);
+document.getElementById('filtroEvaluacion').addEventListener('change', cargarResultados);
+
+Promise.resolve()
+  .then(cargarCursos)
+  .then(cargarEvaluaciones)
+  .then(cargarResultados);
+</script>
+{% endblock %}

@@ -1,0 +1,263 @@
+AUDITORIA MIGRACION SEA
+========================
+
+RESUMEN
+- Rutas HTML detectadas: 28
+- Endpoints API detectados: 200
+- Templates disponibles: 24
+- Modulos declarados en web_app.py: 9
+- Enlaces detectados en base.html: 24
+
+AUTOCORRECCIONES
+- Sin cambios automaticos aplicados
+
+HALLAZGOS CLAVE
+- El template menu.html ya no forma parte de la migracion actual; la navegacion vive en templates/base.html.
+- [INFO] Ruta HTML sin enlace directo en base.html: /docente/autoevaluacion
+- [INFO] Ruta HTML sin enlace directo en base.html: /login-media/<path:rel_path>
+
+MODULOS DECLARADOS
+- [OK] Banco de Preguntas: ruta=/banco-preguntas estado=completo
+- [OK] Generar Exámenes: ruta=/examenes estado=parcial
+- [OK] Escáner OMR: ruta=/escanear estado=completo
+- [OK] Resultados: ruta=/resultados estado=parcial
+- [OK] Estudiantes: ruta=/estudiantes estado=completo
+- [OK] Administración: ruta=/superadmin estado=completo
+- [OK] Gestión Académica: ruta=/gestion-academica estado=parcial
+- [OK] Orientación Escolar: ruta=/orientacion estado=parcial
+- [OK] Secretaría Académica: ruta=/secretaria estado=parcial
+
+RUTAS HTML
+- / | metodos=GET | templates=['index.html']
+- /acceso | metodos=GET,POST | templates=['acceso.html']
+- /autoevaluacion | metodos=GET | templates=['autoevaluacion.html']
+- /banco-preguntas | metodos=GET | templates=['banco_preguntas.html']
+- /calificaciones | metodos=GET | templates=['calificaciones.html']
+- /carga-academica | metodos=GET | templates=['carga_academica.html']
+- /configuracion-plantel | metodos=GET | templates=['configuracion_plantel.html']
+- /dashboard | metodos=GET | templates=['dashboard.html']
+- /docente | metodos=GET | templates=['docente.html']
+- /docente/autoevaluacion | metodos=GET | templates=['autoevaluacion_docente.html']
+- /docs | metodos=GET | templates=['sin_template']
+- /escanear | metodos=GET | templates=['escanear.html']
+- /estudiantes | metodos=GET | templates=['estudiantes.html']
+- /examen | metodos=GET | templates=['examen.html']
+- /examenes | metodos=GET | templates=['examenes.html']
+- /gestion-academica | metodos=GET | templates=['gestion_academica.html']
+- /login-media/<path:rel_path> | metodos=GET | templates=['sin_template']
+- /maestro | metodos=GET | templates=['docente.html']
+- /matricula | metodos=GET | templates=['matricula.html']
+- /orientacion | metodos=GET | templates=['orientacion.html']
+- /plan-estudios | metodos=GET | templates=['plan_estudios.html']
+- /planta-docente | metodos=GET | templates=['planta_docente.html']
+- /resultados | metodos=GET | templates=['resultados.html']
+- /salir | metodos=GET | templates=['sin_template']
+- /secretaria | metodos=GET | templates=['secretaria.html']
+- /seguridad | metodos=GET | templates=['seguridad.html']
+- /superadmin | metodos=GET | templates=['superadmin.html']
+- /swagger | metodos=GET | templates=['sin_template']
+
+ENDPOINTS API
+- /api/auth/status | metodos=GET
+- /api/autoevaluacion/<int:instrumento_id> | metodos=GET
+- /api/autoevaluacion/<int:instrumento_id>/responder | metodos=POST
+- /api/autoevaluacion/activas | metodos=GET
+- /api/banco-preguntas | metodos=GET,POST
+- /api/banco-preguntas/<int:pregunta_id> | metodos=DELETE,GET
+- /api/banco-preguntas/<pregunta_id> | metodos=PUT
+- /api/banco-preguntas/areas | metodos=GET
+- /api/banco-preguntas/evaluaciones | metodos=GET
+- /api/banco-preguntas/grados | metodos=GET
+- /api/banco-preguntas/importar | metodos=POST
+- /api/banco-preguntas/limpiar | metodos=POST
+- /api/banco-preguntas/vaciar | metodos=DELETE
+- /api/calificaciones | metodos=GET
+- /api/calificaciones/camara | metodos=GET
+- /api/calificaciones/resumen | metodos=GET
+- /api/carga-academica | metodos=GET,POST
+- /api/carga-academica/<int:carga_id> | metodos=DELETE,GET,PUT
+- /api/docente/autoevaluacion/exportar | metodos=GET
+- /api/docente/autoevaluacion/instrumentos | metodos=POST
+- /api/docente/autoevaluacion/instrumentos/<int:instrumento_id>/estado | metodos=POST
+- /api/docente/autoevaluacion/resultados | metodos=GET
+- /api/docente/autoevaluacion/resultados/<int:respuesta_id> | metodos=GET
+- /api/docente/autoevaluacion/resumen | metodos=GET
+- /api/docente/autorizar-revision | metodos=POST
+- /api/docente/config | metodos=POST
+- /api/docente/cursos | metodos=GET
+- /api/docente/detalle | metodos=GET
+- /api/docente/exportar | metodos=GET
+- /api/docente/exportar-consolidado | metodos=GET
+- /api/docente/panel | metodos=GET
+- /api/docente/reset | metodos=POST
+- /api/docentes | metodos=GET,POST
+- /api/docentes/<documento> | metodos=DELETE,PUT
+- /api/docentes/<documento>/horas-config | metodos=GET,PUT
+- /api/docentes/buscar/<documento> | metodos=GET
+- /api/docentes/exportar | metodos=GET
+- /api/docentes/importar | metodos=POST
+- /api/docentes/selector | metodos=GET
+- /api/estudiantes | metodos=GET,POST
+- /api/estudiantes/<documento> | metodos=DELETE,PUT
+- /api/estudiantes/<documento>/estado | metodos=PUT
+- /api/estudiantes/buscar/<documento> | metodos=GET
+- /api/estudiantes/exportar | metodos=GET
+- /api/examen/areas | metodos=GET
+- /api/examen/detalle | metodos=GET
+- /api/examen/finalizar | metodos=POST
+- /api/examen/historial | metodos=GET
+- /api/examen/iniciar | metodos=POST
+- /api/examen/respuesta | metodos=POST
+- /api/examenes/<exam_id> | metodos=GET
+- /api/examenes/<exam_id>/clave | metodos=GET
+- /api/examenes/<exam_id>/pdf | metodos=GET
+- /api/examenes/config | metodos=GET
+- /api/examenes/descargar/<nombre_pdf> | metodos=GET
+- /api/examenes/estudiante | metodos=GET
+- /api/examenes/generados | metodos=GET
+- /api/examenes/generar | metodos=POST
+- /api/examenes/multi-area/catalogos | metodos=GET
+- /api/examenes/multi-area/disponibilidad | metodos=GET
+- /api/examenes/multi-area/generar | metodos=POST
+- /api/examenes/panel | metodos=GET
+- /api/gestion-academica/resumen | metodos=GET
+- /api/health | metodos=GET
+- /api/info | metodos=GET
+- /api/matricula/cambiar-curso | metodos=POST
+- /api/matricula/catalogos | metodos=GET
+- /api/matricula/importar | metodos=POST
+- /api/matricula/listado | metodos=GET
+- /api/omr/parsear-qr | metodos=POST
+- /api/omr/procesar | metodos=POST
+- /api/omr/procesar-json | metodos=POST
+- /api/orientacion/resumen | metodos=GET
+- /api/plan-estudios | metodos=GET,POST
+- /api/plan-estudios/<int:registro_id> | metodos=DELETE,PUT
+- /api/plan-estudios/catalogos | metodos=GET
+- /api/plan-estudios/copiar | metodos=POST
+- /api/plan-estudios/importar | metodos=POST
+- /api/plantel/config | metodos=GET,PUT
+- /api/plantel/escala | metodos=GET,PUT
+- /api/plantel/logo | metodos=POST
+- /api/preguntas | metodos=GET
+- /api/resultados/detalle | metodos=GET
+- /api/resultados/exportar | metodos=GET
+- /api/resultados/exportar-consolidado | metodos=GET
+- /api/resultados/panel | metodos=GET
+- /api/secretaria/documentos | metodos=GET
+- /api/secretaria/documentos/acta-grado | metodos=GET
+- /api/secretaria/documentos/calificaciones | metodos=GET
+- /api/secretaria/documentos/diploma | metodos=GET
+- /api/secretaria/documentos/matricula | metodos=GET
+- /api/secretaria/estudiante | metodos=GET
+- /api/seguridad/cambiar-clave | metodos=POST
+- /api/seguridad/resumen | metodos=GET
+- /api/sistema/config-todas | metodos=GET
+- /api/sistema/config/<clave> | metodos=GET,PUT
+- /api/superadmin/resumen | metodos=GET
+- /api/usuarios/docente/<documento> | metodos=GET
+- /api/usuarios/estudiante/<documento> | metodos=GET
+- /api/v1/auth/status | metodos=GET
+- /api/v1/autoevaluacion/<int:instrumento_id> | metodos=GET
+- /api/v1/autoevaluacion/<int:instrumento_id>/responder | metodos=POST
+- /api/v1/autoevaluacion/activas | metodos=GET
+- /api/v1/banco-preguntas | metodos=GET,POST
+- /api/v1/banco-preguntas/<int:pregunta_id> | metodos=DELETE,GET
+- /api/v1/banco-preguntas/<pregunta_id> | metodos=PUT
+- /api/v1/banco-preguntas/areas | metodos=GET
+- /api/v1/banco-preguntas/evaluaciones | metodos=GET
+- /api/v1/banco-preguntas/grados | metodos=GET
+- /api/v1/banco-preguntas/importar | metodos=POST
+- /api/v1/banco-preguntas/importar_excel | metodos=POST
+- /api/v1/banco-preguntas/limpiar | metodos=POST
+- /api/v1/banco-preguntas/vaciar | metodos=DELETE
+- /api/v1/calificaciones | metodos=GET
+- /api/v1/calificaciones/camara | metodos=GET
+- /api/v1/calificaciones/resumen | metodos=GET
+- /api/v1/carga-academica | metodos=GET,POST
+- /api/v1/carga-academica/<int:carga_id> | metodos=DELETE,GET,PUT
+- /api/v1/dashboard/charts | metodos=GET
+- /api/v1/dashboard/metrics | metodos=GET
+- /api/v1/docente/autoevaluacion/exportar | metodos=GET
+- /api/v1/docente/autoevaluacion/instrumentos | metodos=POST
+- /api/v1/docente/autoevaluacion/instrumentos/<int:instrumento_id>/estado | metodos=POST
+- /api/v1/docente/autoevaluacion/resultados | metodos=GET
+- /api/v1/docente/autoevaluacion/resultados/<int:respuesta_id> | metodos=GET
+- /api/v1/docente/autoevaluacion/resumen | metodos=GET
+- /api/v1/docente/autorizar-revision | metodos=POST
+- /api/v1/docente/config | metodos=POST
+- /api/v1/docente/cursos | metodos=GET
+- /api/v1/docente/detalle | metodos=GET
+- /api/v1/docente/exportar | metodos=GET
+- /api/v1/docente/exportar-consolidado | metodos=GET
+- /api/v1/docente/panel | metodos=GET
+- /api/v1/docente/reset | metodos=POST
+- /api/v1/docentes | metodos=GET,POST
+- /api/v1/docentes/<documento> | metodos=DELETE,PUT
+- /api/v1/docentes/<documento>/horas-config | metodos=GET,PUT
+- /api/v1/docentes/buscar/<documento> | metodos=GET
+- /api/v1/docentes/exportar | metodos=GET
+- /api/v1/docentes/importar | metodos=POST
+- /api/v1/docentes/selector | metodos=GET
+- /api/v1/estudiantes | metodos=GET,POST
+- /api/v1/estudiantes/<documento> | metodos=DELETE,PUT
+- /api/v1/estudiantes/<documento>/estado | metodos=PUT
+- /api/v1/estudiantes/buscar/<documento> | metodos=GET
+- /api/v1/estudiantes/exportar | metodos=GET
+- /api/v1/examen/areas | metodos=GET
+- /api/v1/examen/detalle | metodos=GET
+- /api/v1/examen/finalizar | metodos=POST
+- /api/v1/examen/historial | metodos=GET
+- /api/v1/examen/iniciar | metodos=POST
+- /api/v1/examen/respuesta | metodos=POST
+- /api/v1/examenes/<exam_id> | metodos=GET
+- /api/v1/examenes/<exam_id>/clave | metodos=GET
+- /api/v1/examenes/<exam_id>/pdf | metodos=GET
+- /api/v1/examenes/config | metodos=GET
+- /api/v1/examenes/descargar/<nombre_pdf> | metodos=GET
+- /api/v1/examenes/descargar_todos | metodos=GET
+- /api/v1/examenes/generados | metodos=GET
+- /api/v1/examenes/generar | metodos=POST
+- /api/v1/examenes/multi-area/catalogos | metodos=GET
+- /api/v1/examenes/multi-area/disponibilidad | metodos=GET
+- /api/v1/examenes/multi-area/generar | metodos=POST
+- /api/v1/examenes/panel | metodos=GET
+- /api/v1/health | metodos=GET
+- /api/v1/info | metodos=GET
+- /api/v1/matricula/cambiar-curso | metodos=POST
+- /api/v1/matricula/catalogos | metodos=GET
+- /api/v1/matricula/importar | metodos=POST
+- /api/v1/matricula/listado | metodos=GET
+- /api/v1/omr/parsear-qr | metodos=POST
+- /api/v1/omr/procesar | metodos=POST
+- /api/v1/omr/procesar-json | metodos=POST
+- /api/v1/orientacion/resumen | metodos=GET
+- /api/v1/plan-estudios | metodos=GET,POST
+- /api/v1/plan-estudios/<int:registro_id> | metodos=DELETE,PUT
+- /api/v1/plan-estudios/catalogos | metodos=GET
+- /api/v1/plan-estudios/copiar | metodos=POST
+- /api/v1/plan-estudios/importar | metodos=POST
+- /api/v1/plantel/config | metodos=GET,PUT
+- /api/v1/plantel/escala | metodos=GET,PUT
+- /api/v1/plantel/logo | metodos=POST
+- /api/v1/preguntas | metodos=GET
+- /api/v1/resultados/detalle | metodos=GET
+- /api/v1/resultados/exportar | metodos=GET
+- /api/v1/resultados/exportar-consolidado | metodos=GET
+- /api/v1/resultados/panel | metodos=GET
+- /api/v1/secretaria/documentos | metodos=GET
+- /api/v1/secretaria/documentos/acta-grado | metodos=GET
+- /api/v1/secretaria/documentos/calificaciones | metodos=GET
+- /api/v1/secretaria/documentos/diploma | metodos=GET
+- /api/v1/secretaria/documentos/matricula | metodos=GET
+- /api/v1/secretaria/estudiante | metodos=GET
+- /api/v1/seguridad/cambiar-clave | metodos=POST
+- /api/v1/seguridad/resumen | metodos=GET
+- /api/v1/sistema/config-todas | metodos=GET
+- /api/v1/sistema/config/<clave> | metodos=GET,PUT
+- /api/v1/superadmin/resumen | metodos=GET
+- /api/v1/usuarios/docente/<documento> | metodos=GET
+- /api/v1/usuarios/estudiante/<documento> | metodos=GET
+
+SIGUIENTE PASO RECOMENDADO
+- La base de migracion web esta consistente; el siguiente paso es cerrar modulos pendientes y completar navegacion segun rol.

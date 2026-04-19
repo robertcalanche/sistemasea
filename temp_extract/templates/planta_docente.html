@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+{% block title %}Planta Docente{% endblock %}
+
+{% block content %}
+<!-- ENCABEZADO -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-person-badge me-2"></i>Planta Docente
+    </h2>
+    <p class="text-muted mb-0 small">Gestiona el registro de docentes del plantel</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <span class="badge bg-primary fs-6 align-self-center" id="totalBadge">0 docentes</span>
+    <button class="btn btn-success btn-sm" onclick="abrirModalNuevo()">
+      <i class="bi bi-plus-lg me-1"></i>Nuevo
+    </button>
+    <button class="btn btn-outline-primary btn-sm" onclick="abrirModalImportar()">
+      <i class="bi bi-upload me-1"></i>Importar
+    </button>
+    <a class="btn btn-outline-secondary btn-sm" href="/api/docentes/exportar" title="Descargar Excel">
+      <i class="bi bi-download me-1"></i>Exportar
+    </a>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold mb-1">Buscar</label>
+        <input type="text" class="form-control form-control-sm" id="filtroBuscar"
+               placeholder="Nombre, documento o correo…" oninput="aplicarFiltros()">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Estado</label>
+        <select class="form-select form-select-sm" id="filtroEstado" onchange="aplicarFiltros()">
+          <option value="">— Todos —</option>
+          <option value="Activo">Activo</option>
+          <option value="Inactivo">Inactivo</option>
+          <option value="Retirado">Retirado</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Cargo</label>
+        <select class="form-select form-select-sm" id="filtroCargo" onchange="aplicarFiltros()">
+          <option value="">— Todos —</option>
+          <option value="Docente">Docente</option>
+          <option value="Directivo">Directivo</option>
+          <option value="Administrativo">Administrativo</option>
+          <option value="Orientador">Orientador</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold mb-1">&nbsp;</label>
+        <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
+          <i class="bi bi-x-lg me-1"></i>Limpiar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABLA -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle small mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:110px">Documento</th>
+            <th>Nombre</th>
+            <th style="width:110px">Cargo</th>
+            <th style="width:90px">Jornada</th>
+            <th style="width:90px">Sede</th>
+            <th style="width:85px" class="text-center">Estado</th>
+            <th style="width:90px" class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="docentesBody">
+          <tr><td colspan="7" class="text-center py-5">
+            <div class="spinner-border spinner-border-sm text-primary"></div> Cargando…
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PAGINACIÓN -->
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <small class="text-muted" id="paginaInfo"></small>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary btn-sm" id="btnAnterior" onclick="paginar(-1)" disabled>
+      <i class="bi bi-chevron-left"></i> Anterior
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" id="btnSiguiente" onclick="paginar(1)" disabled>
+      Siguiente <i class="bi bi-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ===================== MODAL DOCENTE (Crear / Editar) ===================== -->
+<div class="modal fade" id="modalDocente" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-badge me-2"></i><span id="modalDocenteTitulo">Nuevo Docente</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="docDocumentoOriginal">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Tipo Documento</label>
+            <select class="form-select form-select-sm" id="docTipoDocumento">
+              <option value="CC">CC — Cédula de Ciudadanía</option>
+              <option value="TI">TI — Tarjeta de Identidad</option>
+              <option value="CE">CE — Cédula de Extranjería</option>
+              <option value="PP">PP — Pasaporte</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Documento <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" id="docDocumento"
+                   placeholder="Solo números" inputmode="numeric">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Sexo</label>
+            <select class="form-select form-select-sm" id="docSexo">
+              <option value="">— No especifica —</option>
+              <option value="M">Masculino</option>
+              <option value="F">Femenino</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small">Nombre Completo <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" id="docNombre" placeholder="Apellidos y nombres">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Fecha de Nacimiento</label>
+            <input type="date" class="form-control form-control-sm" id="docFechaNac">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Teléfono / Celular</label>
+            <input type="text" class="form-control form-control-sm" id="docTelefono" placeholder="ej. 3101234567">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Correo electrónico</label>
+            <input type="email" class="form-control form-control-sm" id="docCorreo" placeholder="docente@plantel.edu.co">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Sede</label>
+            <input type="text" class="form-control form-control-sm" id="docSede" placeholder="ej. Principal, Sede Norte">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Cargo</label>
+            <select class="form-select form-select-sm" id="docCargo">
+              <option value="Docente">Docente</option>
+              <option value="Directivo">Directivo</option>
+              <option value="Administrativo">Administrativo</option>
+              <option value="Orientador">Orientador</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Jornada</label>
+            <select class="form-select form-select-sm" id="docJornada">
+              <option value="Mañana">Mañana</option>
+              <option value="Tarde">Tarde</option>
+              <option value="Nocturna">Nocturna</option>
+              <option value="Completa">Completa</option>
+              <option value="Única">Única</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Estado</label>
+            <select class="form-select form-select-sm" id="docEstado">
+              <option value="Activo">Activo</option>
+              <option value="Inactivo">Inactivo</option>
+              <option value="Retirado">Retirado</option>
+            </select>
+          </div>
+        </div>
+        <div class="alert alert-danger mt-3 d-none small" id="modalDocenteError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btnGuardarDocente" onclick="guardarDocente()">
+          <i class="bi bi-save me-1"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL IMPORTAR ===================== -->
+<div class="modal fade" id="modalImportar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Importar Docentes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">
+          Sube un archivo <strong>CSV</strong> o <strong>Excel (.xlsx/.xls)</strong>.
+          Columnas obligatorias: <code>documento</code>, <code>nombre</code>.
+          Opcionales: <code>cargo</code>, <code>jornada</code>, <code>estado</code>,
+          <code>correo</code>, <code>telefono</code>, <code>sede</code>, <code>sexo</code>.
+        </p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Archivo CSV / Excel</label>
+          <input type="file" class="form-control form-control-sm" id="importarArchivo" accept=".csv,.xlsx,.xls">
+        </div>
+        <div class="alert alert-success d-none small" id="importarOk"></div>
+        <div class="alert alert-danger d-none small" id="importarError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btnImportar" onclick="ejecutarImportar()">
+          <i class="bi bi-upload me-1"></i>Importar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL CONFIRMAR ===================== -->
+<div class="modal fade" id="modalConfirmar" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalConfirmarTexto"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-danger btn-sm" id="btnConfirmarOk">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const LIMITE_PAGINA = 20;
+let todosDocentes = [];
+let filtrados = [];
+let paginaActual = 0;
+let modalDocInst = null;
+let modalImpInst = null;
+let modalConfInst = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  modalDocInst  = new bootstrap.Modal(document.getElementById('modalDocente'));
+  modalImpInst  = new bootstrap.Modal(document.getElementById('modalImportar'));
+  modalConfInst = new bootstrap.Modal(document.getElementById('modalConfirmar'));
+  cargarDocentes();
+});
+
+/* --------- Carga inicial --------- */
+async function cargarDocentes() {
+  try {
+    const resp = await fetch('/api/docentes?limit=1000&offset=0');
+    const data = await resp.json();
+    todosDocentes = data.docentes || [];
+    aplicarFiltros();
+  } catch(e) {
+    document.getElementById('docentesBody').innerHTML =
+      `<tr><td colspan="7" class="text-center text-danger py-5">
+        <i class="bi bi-wifi-off me-2"></i>Error al cargar datos
+      </td></tr>`;
+  }
+}
+
+/* --------- Filtros y renderizado --------- */
+function aplicarFiltros() {
+  const q      = document.getElementById('filtroBuscar').value.toLowerCase().trim();
+  const estado = document.getElementById('filtroEstado').value;
+  const cargo  = document.getElementById('filtroCargo').value;
+
+  filtrados = todosDocentes.filter(d => {
+    if (estado && (d.estado || '') !== estado) return false;
+    if (cargo  && (d.cargo  || '') !== cargo)  return false;
+    if (q) {
+      const haystack = `${d.nombre||''} ${d.documento||''} ${d.correo||''}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
+  paginaActual = 0;
+  renderizarTabla();
+}
+
+function limpiarFiltros() {
+  document.getElementById('filtroBuscar').value = '';
+  document.getElementById('filtroEstado').value = '';
+  document.getElementById('filtroCargo').value  = '';
+  aplicarFiltros();
+}
+
+function paginar(dir) {
+  const maxPag = Math.max(0, Math.ceil(filtrados.length / LIMITE_PAGINA) - 1);
+  paginaActual = Math.min(maxPag, Math.max(0, paginaActual + dir));
+  renderizarTabla();
+}
+
+function renderizarTabla() {
+  const total = filtrados.length;
+  const offset = paginaActual * LIMITE_PAGINA;
+  const pagina = filtrados.slice(offset, offset + LIMITE_PAGINA);
+  const maxPag = Math.max(0, Math.ceil(total / LIMITE_PAGINA) - 1);
+
+  document.getElementById('totalBadge').textContent = `${total} docentes`;
+  document.getElementById('paginaInfo').textContent = total
+    ? `Mostrando ${offset + 1}–${Math.min(offset + LIMITE_PAGINA, total)} de ${total}`
+    : '';
+  document.getElementById('btnAnterior').disabled = paginaActual <= 0;
+  document.getElementById('btnSiguiente').disabled = paginaActual >= maxPag;
+
+  const tbody = document.getElementById('docentesBody');
+  if (!pagina.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-5">
+      <i class="bi bi-search fs-4 d-block mb-2 opacity-50"></i>
+      No se encontraron docentes con esos criterios
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = pagina.map(d => {
+    const estadoBadge = {
+      'Activo':   'bg-success',
+      'Inactivo': 'bg-secondary',
+      'Retirado': 'bg-danger',
+    }[d.estado] || 'bg-light text-dark';
+    return `<tr>
+      <td class="text-muted small">${escHtml(d.documento || '')}</td>
+      <td><strong>${escHtml(d.nombre || '')}</strong>
+          ${d.correo ? `<br><small class="text-muted">${escHtml(d.correo)}</small>` : ''}
+      </td>
+      <td><small>${escHtml(d.cargo || '')}</small></td>
+      <td><small>${escHtml(d.jornada || '')}</small></td>
+      <td><small>${escHtml(d.sede || '')}</small></td>
+      <td class="text-center"><span class="badge ${estadoBadge}">${escHtml(d.estado || '')}</span></td>
+      <td class="text-center">
+        <button class="btn btn-xs btn-outline-primary py-0 px-1 me-1" title="Editar"
+                onclick="editarDocente('${escHtml(d.documento || '')}')">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-xs btn-outline-danger py-0 px-1" title="Eliminar"
+                onclick="confirmarEliminar('${escHtml(d.documento || '')}','${escHtml(d.nombre || '')}')">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* --------- CRUD --------- */
+function _resetModalDocente() {
+  ['docDocumentoOriginal','docDocumento','docNombre','docFechaNac','docTelefono','docCorreo','docSede']
+    .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('docTipoDocumento').value = 'CC';
+  document.getElementById('docSexo').value = '';
+  document.getElementById('docCargo').value = 'Docente';
+  document.getElementById('docJornada').value = 'Mañana';
+  document.getElementById('docEstado').value = 'Activo';
+  document.getElementById('modalDocenteError').classList.add('d-none');
+}
+
+function abrirModalNuevo() {
+  _resetModalDocente();
+  document.getElementById('modalDocenteTitulo').textContent = 'Nuevo Docente';
+  modalDocInst.show();
+}
+
+function editarDocente(documento) {
+  const d = todosDocentes.find(x => x.documento === documento);
+  if (!d) { alert('Docente no encontrado en la lista.'); return; }
+  _resetModalDocente();
+  document.getElementById('modalDocenteTitulo').textContent = `Editar — ${d.nombre || documento}`;
+  document.getElementById('docDocumentoOriginal').value = documento;
+  document.getElementById('docTipoDocumento').value  = d.tipo_documento || 'CC';
+  document.getElementById('docDocumento').value      = d.documento || '';
+  document.getElementById('docNombre').value         = d.nombre || '';
+  document.getElementById('docSexo').value           = d.sexo || '';
+  document.getElementById('docFechaNac').value       = d.fecha_nacimiento || '';
+  document.getElementById('docTelefono').value       = d.telefono || '';
+  document.getElementById('docCorreo').value         = d.correo || '';
+  document.getElementById('docSede').value           = d.sede || '';
+  document.getElementById('docCargo').value          = d.cargo || 'Docente';
+  document.getElementById('docJornada').value        = d.jornada || 'Mañana';
+  document.getElementById('docEstado').value         = d.estado || 'Activo';
+  modalDocInst.show();
+}
+
+async function guardarDocente() {
+  const docOriginal = document.getElementById('docDocumentoOriginal').value.trim();
+  const documento   = document.getElementById('docDocumento').value.trim();
+  const nombre      = document.getElementById('docNombre').value.trim();
+  const errEl = document.getElementById('modalDocenteError');
+
+  if (!documento || !/^\d+$/.test(documento)) {
+    mostrarError(errEl, 'El documento es obligatorio y debe ser numérico.'); return;
+  }
+  if (!nombre) {
+    mostrarError(errEl, 'El nombre es obligatorio.'); return;
+  }
+
+  const payload = {
+    tipo_documento:   document.getElementById('docTipoDocumento').value,
+    documento,
+    nombre,
+    sexo:             document.getElementById('docSexo').value,
+    fecha_nacimiento: document.getElementById('docFechaNac').value,
+    telefono:         document.getElementById('docTelefono').value.trim(),
+    correo:           document.getElementById('docCorreo').value.trim(),
+    cargo:            document.getElementById('docCargo').value,
+    jornada:          document.getElementById('docJornada').value,
+    sede:             document.getElementById('docSede').value.trim(),
+    estado:           document.getElementById('docEstado').value,
+  };
+
+  const btn = document.getElementById('btnGuardarDocente');
+  btn.disabled = true;
+  try {
+    let resp;
+    if (docOriginal) {
+      resp = await fetch(`/api/docentes/${encodeURIComponent(docOriginal)}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+    } else {
+      resp = await fetch('/api/docentes', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+    }
+    const data = await resp.json();
+    if (!data.ok) { mostrarError(errEl, data.error || 'Error al guardar.'); return; }
+    modalDocInst.hide();
+    await cargarDocentes();
+  } catch(e) {
+    mostrarError(errEl, 'Error de red al guardar.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function confirmarEliminar(documento, nombre) {
+  document.getElementById('modalConfirmarTexto').innerHTML =
+    `¿Eliminar al docente <strong>${escHtml(nombre)}</strong> (${escHtml(documento)})?<br>
+     <small class="text-muted">Esta acción no se puede deshacer.</small>`;
+  document.getElementById('btnConfirmarOk').onclick = async () => {
+    modalConfInst.hide();
+    try {
+      const resp = await fetch(`/api/docentes/${encodeURIComponent(documento)}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.ok) await cargarDocentes();
+      else alert(data.error || 'No se pudo eliminar.');
+    } catch(e) { alert('Error de red.'); }
+  };
+  modalConfInst.show();
+}
+
+/* --------- Importar --------- */
+function abrirModalImportar() {
+  document.getElementById('importarArchivo').value = '';
+  document.getElementById('importarOk').classList.add('d-none');
+  document.getElementById('importarError').classList.add('d-none');
+  modalImpInst.show();
+}
+
+async function ejecutarImportar() {
+  const archivo = document.getElementById('importarArchivo').files[0];
+  const okEl  = document.getElementById('importarOk');
+  const errEl = document.getElementById('importarError');
+  okEl.classList.add('d-none');
+  errEl.classList.add('d-none');
+  if (!archivo) { errEl.textContent = 'Selecciona un archivo.'; errEl.classList.remove('d-none'); return; }
+
+  const formData = new FormData();
+  formData.append('archivo', archivo);
+  const btn = document.getElementById('btnImportar');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/docentes/importar', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.ok) {
+      okEl.innerHTML = `Importados: <strong>${data.insertados}</strong> &nbsp;|&nbsp;
+        Duplicados: <strong>${data.duplicados}</strong> &nbsp;|&nbsp;
+        Inválidos: <strong>${data.invalidos}</strong>`;
+      okEl.classList.remove('d-none');
+      await cargarDocentes();
+    } else {
+      errEl.textContent = data.error || 'Error al importar.';
+      errEl.classList.remove('d-none');
+    }
+  } catch(e) {
+    errEl.textContent = 'Error de red al importar.';
+    errEl.classList.remove('d-none');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* --------- Utilidades --------- */
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function mostrarError(el, msg) {
+  el.textContent = msg;
+  el.classList.remove('d-none');
+}
+</script>
+<style>.btn-xs { font-size:.75rem; line-height:1.2; }</style>
+{% endblock %}

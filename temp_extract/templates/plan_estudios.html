@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+{% block title %}Plan de Estudios{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-journal-text me-2"></i>Plan de Estudios
+    </h2>
+    <p class="text-muted mb-0 small">Administra areas por grado/curso, horas semanales, copia e importacion masiva.</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-success btn-sm" onclick="abrirModalNuevo()">
+      <i class="bi bi-plus-lg me-1"></i>Nuevo Registro
+    </button>
+    <button class="btn btn-outline-primary btn-sm" onclick="abrirModalCopiar()">
+      <i class="bi bi-files me-1"></i>Copiar Plan
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" onclick="abrirModalImportar()">
+      <i class="bi bi-upload me-1"></i>Importar
+    </button>
+    {% if web_can_access('/superadmin') %}
+    <a href="/superadmin" class="btn btn-outline-dark btn-sm">Volver</a>
+    {% endif %}
+  </div>
+</div>
+
+<div id="alertaPlan" class="alert d-none" role="alert"></div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Nivel</label>
+        <select class="form-select form-select-sm" id="filtroNivel" onchange="cargarPlan()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold mb-1">Grado</label>
+        <select class="form-select form-select-sm" id="filtroGrado" onchange="cargarPlan()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold mb-1">Curso</label>
+        <select class="form-select form-select-sm" id="filtroCurso" onchange="cargarPlan()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Area</label>
+        <input class="form-control form-control-sm" id="filtroArea" placeholder="Buscar area" oninput="debounceCargarPlan()">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold mb-1">&nbsp;</label>
+        <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
+          <i class="bi bi-x-lg me-1"></i>Limpiar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong>Registros de Plan de Estudios</strong>
+    <small id="planResumen" class="text-muted">Cargando...</small>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle small mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Nivel</th>
+          <th>Grado</th>
+          <th>Curso</th>
+          <th>Area</th>
+          <th>Horas</th>
+          <th style="width: 120px">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="planBody">
+        <tr><td colspan="7" class="text-center py-4 text-muted">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" id="btnPrev" onclick="paginar(-1)" disabled>Anterior</button>
+      <button class="btn btn-sm btn-outline-secondary" id="btnNext" onclick="paginar(1)" disabled>Siguiente</button>
+    </div>
+    <small id="paginaInfo" class="text-muted">Pagina 1</small>
+  </div>
+</div>
+
+<div class="modal fade" id="modalPlan" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalPlanTitulo">Nuevo Registro</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="planId">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Nivel</label>
+            <input class="form-control form-control-sm" id="planNivel" placeholder="Ej: Basica Primaria">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Grado *</label>
+            <input class="form-control form-control-sm" id="planGrado" placeholder="Ej: 5">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Curso *</label>
+            <input class="form-control form-control-sm" id="planCurso" placeholder="Ej: 1">
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Area *</label>
+            <select class="form-select form-select-sm" id="planArea"></select>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Horas</label>
+            <input type="number" min="0" class="form-control form-control-sm" id="planHoras" value="0">
+          </div>
+        </div>
+        <div class="alert alert-danger d-none mt-3 small" id="modalPlanError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="guardarRegistro()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCopiar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Copiar Plan de Estudios</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Grado Origen *</label>
+            <input class="form-control form-control-sm" id="copiarGradoOrigen" placeholder="Ej: 5">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Curso Origen *</label>
+            <input class="form-control form-control-sm" id="copiarCursoOrigen" placeholder="Ej: 1">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Grado Destino *</label>
+            <input class="form-control form-control-sm" id="copiarGradoDestino" placeholder="Ej: 5">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Curso Destino *</label>
+            <input class="form-control form-control-sm" id="copiarCursoDestino" placeholder="Ej: 2">
+          </div>
+          <div class="col-12">
+            <div class="form-check mt-1">
+              <input class="form-check-input" type="checkbox" id="copiarReemplazar">
+              <label class="form-check-label small" for="copiarReemplazar">Reemplazar destino si ya existe</label>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-danger d-none mt-3 small" id="modalCopiarError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="copiarPlan()">Copiar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalImportar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Importar Plan de Estudios</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">Archivo CSV/XLSX con columnas: nivel, curso (GG-CC), IdArea, horas.</p>
+        <input type="file" class="form-control form-control-sm" id="archivoPlan" accept=".csv,.xlsx,.xls">
+        <div class="alert alert-danger d-none mt-3 small" id="modalImportarError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="importarPlan()">Importar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let pagina = 1;
+const limite = 30;
+let total = 0;
+let debounceTimer = null;
+let modalPlan = null;
+let modalCopiar = null;
+let modalImportar = null;
+let areasCache = [];
+
+function showAlert(tipo, msg) {
+  const box = document.getElementById('alertaPlan');
+  box.className = `alert alert-${tipo}`;
+  box.textContent = msg;
+  box.classList.remove('d-none');
+}
+
+function hideAlert() {
+  document.getElementById('alertaPlan').classList.add('d-none');
+}
+
+function debounceCargarPlan() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => { pagina = 1; cargarPlan(); }, 280);
+}
+
+function limpiarFiltros() {
+  document.getElementById('filtroNivel').value = '';
+  document.getElementById('filtroGrado').value = '';
+  document.getElementById('filtroCurso').value = '';
+  document.getElementById('filtroArea').value = '';
+  pagina = 1;
+  cargarPlan();
+}
+
+async function cargarCatalogos() {
+  const resp = await fetch('/api/plan-estudios/catalogos');
+  const data = await resp.json();
+  if (!data.ok) return;
+
+  const niveles = data.niveles || [];
+  const grados = data.grados || [];
+  const cursos = data.cursos || [];
+  areasCache = data.areas || [];
+
+  const selNivel = document.getElementById('filtroNivel');
+  const selGrado = document.getElementById('filtroGrado');
+  const selCurso = document.getElementById('filtroCurso');
+
+  selNivel.innerHTML = '<option value="">Todos</option>' + niveles.map(v => `<option value="${v}">${v}</option>`).join('');
+  selGrado.innerHTML = '<option value="">Todos</option>' + grados.map(v => `<option value="${v}">${v}</option>`).join('');
+  selCurso.innerHTML = '<option value="">Todos</option>' + cursos.map(v => `<option value="${v}">${v}</option>`).join('');
+
+  const selArea = document.getElementById('planArea');
+  selArea.innerHTML = '<option value="">Selecciona un area</option>' + areasCache.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
+}
+
+async function cargarPlan() {
+  hideAlert();
+  const body = document.getElementById('planBody');
+  body.innerHTML = '<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+
+  const params = new URLSearchParams();
+  params.set('limit', String(limite));
+  params.set('offset', String((pagina - 1) * limite));
+
+  const nivel = document.getElementById('filtroNivel').value;
+  const grado = document.getElementById('filtroGrado').value;
+  const curso = document.getElementById('filtroCurso').value;
+  const area = document.getElementById('filtroArea').value.trim();
+
+  if (nivel) params.set('nivel', nivel);
+  if (grado) params.set('grado', grado);
+  if (curso) params.set('curso', curso);
+  if (area) params.set('area', area);
+
+  try {
+    const resp = await fetch(`/api/plan-estudios?${params.toString()}`);
+    const data = await resp.json();
+    if (!data.ok) {
+      body.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar datos</td></tr>';
+      return;
+    }
+
+    const rows = data.items || [];
+    total = Number(data.total || 0);
+
+    document.getElementById('planResumen').textContent = `${total} registro(s)`;
+    document.getElementById('paginaInfo').textContent = `Pagina ${pagina}`;
+    document.getElementById('btnPrev').disabled = pagina <= 1;
+    document.getElementById('btnNext').disabled = (pagina * limite) >= total;
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Sin registros</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.id}</td>
+        <td>${r.nivel || ''}</td>
+        <td>${r.grado || ''}</td>
+        <td>${r.curso || ''}</td>
+        <td>${r.area || ''}</td>
+        <td><span class="badge bg-secondary">${r.horas || 0}</span></td>
+        <td>
+          <button class="btn btn-outline-primary btn-sm" onclick='abrirModalEditar(${JSON.stringify(JSON.stringify(r))})' title="Editar">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-outline-danger btn-sm" onclick="eliminarRegistro(${r.id})" title="Eliminar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    body.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error de conexion</td></tr>';
+  }
+}
+
+function paginar(delta) {
+  const next = pagina + delta;
+  if (next < 1) return;
+  pagina = next;
+  cargarPlan();
+}
+
+function abrirModalNuevo() {
+  document.getElementById('modalPlanTitulo').textContent = 'Nuevo Registro';
+  document.getElementById('planId').value = '';
+  document.getElementById('planNivel').value = '';
+  document.getElementById('planGrado').value = '';
+  document.getElementById('planCurso').value = '';
+  document.getElementById('planArea').value = '';
+  document.getElementById('planHoras').value = '0';
+  document.getElementById('modalPlanError').classList.add('d-none');
+  modalPlan.show();
+}
+
+function abrirModalEditar(encoded) {
+  const r = JSON.parse(JSON.parse(encoded));
+  document.getElementById('modalPlanTitulo').textContent = 'Editar Registro';
+  document.getElementById('planId').value = String(r.id || '');
+  document.getElementById('planNivel').value = r.nivel || '';
+  document.getElementById('planGrado').value = r.grado || '';
+  document.getElementById('planCurso').value = r.curso || '';
+  document.getElementById('planHoras').value = String(r.horas || 0);
+
+  const areaSel = document.getElementById('planArea');
+  const idArea = r.IdArea ? String(r.IdArea) : '';
+  areaSel.value = idArea;
+  if (!idArea && r.area) {
+    const found = areasCache.find(a => (a.nombre || '').toLowerCase() === String(r.area).toLowerCase());
+    if (found) areaSel.value = String(found.id);
+  }
+
+  document.getElementById('modalPlanError').classList.add('d-none');
+  modalPlan.show();
+}
+
+async function guardarRegistro() {
+  const id = document.getElementById('planId').value;
+  const payload = {
+    nivel: document.getElementById('planNivel').value,
+    grado: document.getElementById('planGrado').value,
+    curso: document.getElementById('planCurso').value,
+    IdArea: document.getElementById('planArea').value,
+    horas: document.getElementById('planHoras').value,
+  };
+
+  const errBox = document.getElementById('modalPlanError');
+  errBox.classList.add('d-none');
+
+  try {
+    const resp = await fetch(id ? `/api/plan-estudios/${id}` : '/api/plan-estudios', {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      errBox.textContent = data.error || 'No se pudo guardar';
+      errBox.classList.remove('d-none');
+      return;
+    }
+
+    modalPlan.hide();
+    showAlert('success', id ? 'Registro actualizado correctamente.' : 'Registro creado correctamente.');
+    await cargarCatalogos();
+    await cargarPlan();
+  } catch (err) {
+    errBox.textContent = 'Error de conexion al guardar';
+    errBox.classList.remove('d-none');
+  }
+}
+
+async function eliminarRegistro(id) {
+  if (!confirm(`¿Eliminar el registro ID ${id}?`)) return;
+  try {
+    const resp = await fetch(`/api/plan-estudios/${id}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      showAlert('danger', data.error || 'No se pudo eliminar');
+      return;
+    }
+    showAlert('success', 'Registro eliminado.');
+    await cargarCatalogos();
+    await cargarPlan();
+  } catch (err) {
+    showAlert('danger', 'Error de conexion al eliminar');
+  }
+}
+
+function abrirModalCopiar() {
+  document.getElementById('modalCopiarError').classList.add('d-none');
+  modalCopiar.show();
+}
+
+async function copiarPlan() {
+  const payload = {
+    origen_grado: document.getElementById('copiarGradoOrigen').value,
+    origen_curso: document.getElementById('copiarCursoOrigen').value,
+    destino_grado: document.getElementById('copiarGradoDestino').value,
+    destino_curso: document.getElementById('copiarCursoDestino').value,
+    reemplazar: document.getElementById('copiarReemplazar').checked,
+  };
+
+  const errBox = document.getElementById('modalCopiarError');
+  errBox.classList.add('d-none');
+
+  try {
+    const resp = await fetch('/api/plan-estudios/copiar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      errBox.textContent = data.error || 'No se pudo copiar';
+      errBox.classList.remove('d-none');
+      return;
+    }
+
+    modalCopiar.hide();
+    showAlert('success', `Plan copiado. Insertados: ${data.insertados || 0}.`);
+    await cargarCatalogos();
+    await cargarPlan();
+  } catch (err) {
+    errBox.textContent = 'Error de conexion al copiar';
+    errBox.classList.remove('d-none');
+  }
+}
+
+function abrirModalImportar() {
+  document.getElementById('archivoPlan').value = '';
+  document.getElementById('modalImportarError').classList.add('d-none');
+  modalImportar.show();
+}
+
+async function importarPlan() {
+  const fileInput = document.getElementById('archivoPlan');
+  const file = fileInput.files[0];
+  const errBox = document.getElementById('modalImportarError');
+  errBox.classList.add('d-none');
+
+  if (!file) {
+    errBox.textContent = 'Selecciona un archivo';
+    errBox.classList.remove('d-none');
+    return;
+  }
+
+  const form = new FormData();
+  form.append('archivo', file);
+
+  try {
+    const resp = await fetch('/api/plan-estudios/importar', {
+      method: 'POST',
+      body: form,
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      errBox.textContent = data.error || 'No se pudo importar';
+      errBox.classList.remove('d-none');
+      return;
+    }
+
+    modalImportar.hide();
+    showAlert('success', `Importacion completada. Insertados: ${data.insertados || 0}. Omitidos: ${data.omitidos || 0}.`);
+    await cargarCatalogos();
+    await cargarPlan();
+  } catch (err) {
+    errBox.textContent = 'Error de conexion al importar';
+    errBox.classList.remove('d-none');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  modalPlan = new bootstrap.Modal(document.getElementById('modalPlan'));
+  modalCopiar = new bootstrap.Modal(document.getElementById('modalCopiar'));
+  modalImportar = new bootstrap.Modal(document.getElementById('modalImportar'));
+
+  await cargarCatalogos();
+  await cargarPlan();
+});
+</script>
+{% endblock %}

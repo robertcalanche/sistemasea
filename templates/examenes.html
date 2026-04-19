@@ -1,0 +1,993 @@
+{% extends "base.html" %}
+{% block title %}Exámenes{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-file-earmark-text me-2"></i>Gestión de Exámenes
+    </h2>
+    <p class="text-muted mb-0 small">Consulta exámenes generados, claves de respuestas y configuración</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-file-earmark-check me-1"></i>Exámenes generados</div>
+      <div class="display-6" id="exm-total-generados">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-gear me-1"></i>Configs habilitadas</div>
+      <div class="display-6" id="exm-configs-habilitadas">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-file-pdf me-1"></i>PDF recientes</div>
+      <div class="display-6" id="exm-archivos-pdf">-</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-collection me-1"></i>Cuadernillos</div>
+      <div class="display-6" id="exm-cuadernillos">-</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Actividad reciente</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover small mb-0">
+            <thead><tr><th>ID Examen</th><th>Grupo</th><th>Preguntas</th><th>Fecha</th></tr></thead>
+            <tbody id="exm-recientes-body">
+              <tr><td colspan="4" class="text-center text-muted py-3">Cargando panel...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-folder2-open me-2"></i>Archivos emitidos</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover small mb-0">
+            <thead><tr><th>Archivo</th><th>Tipo</th><th>Tamaño</th><th></th></tr></thead>
+            <tbody id="exm-archivos-body">
+              <tr><td colspan="4" class="text-center text-muted py-3">Cargando archivos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TARJETAS: CONSULTAS RÁPIDAS -->
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-list-ol me-2"></i>Exámenes Generados</div>
+      <div class="card-body">
+        <p class="small text-muted">Consulta el listado de exámenes generados con su ID, número de preguntas y fecha.</p>
+        <button class="btn btn-primary btn-sm" onclick="cargarExamenes()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Cargar listado
+        </button>
+      </div>
+      <div class="card-body pt-0 p-0">
+        <div class="table-responsive">
+          <table class="table table-hover small mb-0">
+            <thead><tr><th>ID Examen</th><th>Grupo</th><th>N° Preguntas</th><th>Fecha</th><th></th></tr></thead>
+            <tbody id="examenesBody">
+              <tr><td colspan="5" class="text-center text-muted py-3">Presiona "Cargar listado"</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-search me-2"></i>Consulta de Examen por ID</div>
+      <div class="card-body">
+        <p class="small text-muted">Ingresa el ID para consultar estudiante, área, fecha, PDF asociado y la clave de respuestas.</p>
+        <div class="input-group input-group-sm mb-3">
+          <input type="text" class="form-control text-uppercase" id="inputExamenId"
+                 placeholder="Ej: A1B2C3" maxlength="20" />
+          <button class="btn btn-primary" onclick="consultarExamenPorId()">
+            <i class="bi bi-search"></i> Consultar
+          </button>
+        </div>
+        <div id="examenDetalleResultado" class="d-none">
+          <div class="row g-2 mb-3 small">
+            <div class="col-md-6"><strong>Estudiante:</strong> <span id="detalleEstudiante">—</span></div>
+            <div class="col-md-6"><strong>Documento:</strong> <span id="detalleDocumento">—</span></div>
+            <div class="col-md-4"><strong>Grado:</strong> <span id="detalleGrado">—</span></div>
+            <div class="col-md-4"><strong>Curso:</strong> <span id="detalleCurso">—</span></div>
+            <div class="col-md-4"><strong>Versión:</strong> <span id="detalleVersion">—</span></div>
+            <div class="col-md-6"><strong>Área:</strong> <span id="detalleArea">—</span></div>
+            <div class="col-md-6"><strong>Evaluación:</strong> <span id="detalleEvaluacion">—</span></div>
+            <div class="col-md-12"><strong>Fecha:</strong> <span id="detalleFecha">—</span></div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap mb-3">
+            <a id="detallePdfBtn" href="#" class="btn btn-outline-danger btn-sm d-none" target="_blank" rel="noopener">
+              <i class="bi bi-file-pdf me-1"></i>Abrir PDF
+            </a>
+            <button id="detalleClaveBtn" type="button" class="btn btn-outline-primary btn-sm" onclick="consultarClave()">
+              <i class="bi bi-key me-1"></i>Ver clave
+            </button>
+          </div>
+        </div>
+        <div id="claveResultado" class="d-none">
+          <h6 class="fw-semibold">Clave de respuestas — <span id="claveId"></span></h6>
+          <div id="claveContenido" class="d-flex flex-wrap gap-2 mt-2"></div>
+        </div>
+        <div id="claveError" class="alert alert-warning d-none small"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GENERAR EXÁMENES -->
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-pencil-square me-2"></i>Generar Nuevos Exámenes</div>
+  <div class="card-body">
+    <form id="generarExamenForm" onsubmit="generarExamenes(event)">
+      <div class="row g-3 mb-3">
+        <!-- Grado y Área (obligatorios) -->
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Grado *</label>
+          <select class="form-select form-select-sm" id="genGrado" required>
+            <option value="">— Seleccionar —</option>
+            {% for g in grados %}
+            <option value="{{ g }}">{{ g }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Área *</label>
+          <select class="form-select form-select-sm" id="genArea" required>
+            <option value="">— Seleccionar —</option>
+            {% for a in areas %}
+            <option value="{{ a }}">{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Evaluación</label>
+          <select class="form-select form-select-sm" id="genEvaluacion"></select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Curso</label>
+          <input type="text" class="form-control form-control-sm" id="genCurso" placeholder="Ej: 101">
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <!-- Opciones de generación -->
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Modo</label>
+          <select class="form-select form-select-sm" id="genModoGeneracion">
+            <option value="individual">Individual</option>
+            <option value="todos">Todos</option>
+            <option value="todos_un_pdf">Todos (1 PDF)</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Versiones</label>
+          <input type="number" min="1" max="26" value="1" class="form-control form-control-sm" id="genVersiones">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">N° Preguntas</label>
+          <input type="number" min="1" class="form-control form-control-sm" id="genCantPreguntas" placeholder="Auto">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Textos</label>
+          <input type="number" min="0" value="0" class="form-control form-control-sm" id="genCantTextos">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Docente</label>
+          <input type="text" class="form-control form-control-sm" id="genDocente" placeholder="Nombre (opt)">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Fecha</label>
+          <input type="date" class="form-control form-control-sm" id="genFecha">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Formato</label>
+          <select class="form-select form-select-sm" id="genFormato">
+            <option value="">Estándar</option>
+            <option value="prueba_saber">Prueba SABER</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <!-- Checkboxes y opciones PDF -->
+        <div class="col-md-3">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="genHojaRespuestas">
+            <label class="form-check-label small" for="genHojaRespuestas">Generar hoja respuestas</label>
+          </div>
+          <div class="form-check mt-2">
+            <input type="checkbox" class="form-check-input" id="genPDF">
+            <label class="form-check-label small" for="genPDF">Generar PDFs</label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Modo hoja respuestas</label>
+          <select class="form-select form-select-sm" id="genModoHoja">
+            <option value="">Por defecto</option>
+            <option value="omr_standar">OMR Estándar</option>
+            <option value="omr_mejorado">OMR Mejorado</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Estudiante específico (doc)</label>
+          <input type="text" class="form-control form-control-sm" id="genEstudiante" 
+                 placeholder="Requerido en modo individual; se ignora en modo todos">
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-pencil me-1"></i>Generar
+        </button>
+        <button type="reset" class="btn btn-outline-secondary btn-sm">Limpiar</button>
+      </div>
+    </form>
+
+    <!-- Alerta de progreso -->
+    <div id="genAlerta" class="alert d-none mt-3" role="alert"></div>
+    
+    <!-- Resumen de resultados -->
+    <div id="genResultados" class="d-none mt-4">
+      <hr>
+      <h6 class="fw-semibold mb-3">Exámenes Generados: <span id="genTotal">0</span></h6>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead><tr><th>Código</th><th>Versión</th><th>Estudiante</th><th>Doc</th><th>N° Preg</th><th>PDF</th></tr></thead>
+          <tbody id="genResultadosBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-camera me-2"></i>Calificación por Cámara</div>
+  <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <div class="fw-semibold">Escaneo OMR desde navegador</div>
+      <div class="small text-muted">Abre el escáner web para calificar hojas con cámara, QR y lectura automática.</div>
+    </div>
+    <a href="/escanear" class="btn btn-primary btn-sm">
+      <i class="bi bi-camera-video me-1"></i>Abrir escáner
+    </a>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-collection me-2"></i>Cuadernillo Multiárea</div>
+  <div class="card-body">
+    <form id="multiAreaForm" onsubmit="generarCuadernilloMultiArea(event)">
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Grado *</label>
+          <select class="form-select form-select-sm" id="maGrado" required>
+            <option value="">— Seleccionar —</option>
+            {% for g in grados %}
+            <option value="{{ g }}">{{ g }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Curso</label>
+          <select class="form-select form-select-sm" id="maCurso">
+            <option value="">— Todos —</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Modo</label>
+          <select class="form-select form-select-sm" id="maModo">
+            <option value="individual">Individual</option>
+            <option value="todos">Todos</option>
+            <option value="todos_un_pdf">Todos (1 PDF)</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Estudiante</label>
+          <select class="form-select form-select-sm" id="maEstudiante">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="small text-muted">
+          Selecciona las áreas, evaluación y número de preguntas por bloque.
+          <span id="multiAreaResumen" class="ms-2"></span>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cargarCatalogosMultiArea()">
+          <i class="bi bi-arrow-repeat me-1"></i>Actualizar
+        </button>
+      </div>
+
+      <div class="table-responsive border rounded">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width:48px"></th>
+              <th>Área</th>
+              <th>Evaluación</th>
+              <th style="width:180px">Disponibles</th>
+              <th style="width:140px">Preguntas</th>
+            </tr>
+          </thead>
+          <tbody id="multiAreaBody">
+            <tr><td colspan="5" class="text-center text-muted py-3">Selecciona un grado para cargar áreas.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="small text-muted mt-2" id="multiAreaTotalPreguntas">Total preguntas del cuadernillo: 0</div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Generar cuadernillo
+        </button>
+      </div>
+    </form>
+    <div id="multiAreaAlert" class="alert d-none mt-3 mb-0"></div>
+  </div>
+</div>
+
+<!-- CONFIGURACIÓN DE EXAMEN -->
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-gear me-2"></i>Consultar Configuración de Evaluación</div>
+  <div class="card-body">
+    <div class="row g-2 align-items-end mb-3">
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">Grado</label>
+        <select class="form-select form-select-sm" id="configGrado">
+          <option value="">— Seleccionar —</option>
+          {% for g in grados %}
+          <option value="{{ g }}">{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">Área</label>
+        <select class="form-select form-select-sm" id="configArea">
+          <option value="">— Seleccionar —</option>
+          {% for a in areas %}
+          <option value="{{ a }}">{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">Evaluación</label>
+        <select class="form-select form-select-sm" id="configEvaluacion">
+          <option value="">— Todas —</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">&nbsp;</label>
+        <button class="btn btn-primary btn-sm w-100" onclick="consultarConfig()">
+          <i class="bi bi-search me-1"></i>Consultar
+        </button>
+      </div>
+    </div>
+
+    <div id="configResultado" class="d-none">
+      <hr />
+      <div class="row g-2" id="configCards"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Clave completa -->
+<div class="modal fade" id="claveModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-key me-2"></i>Clave del Examen <span id="modalExamenId"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="modalClaveContenido" class="d-flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function cargarPanelExamenes() {
+  try {
+    const resp = await fetch('/api/examenes/panel');
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      throw new Error(data.error || 'No fue posible cargar el panel');
+    }
+
+    const metricas = data.metricas || {};
+    document.getElementById('exm-total-generados').textContent = metricas.examenes_generados ?? '-';
+    document.getElementById('exm-configs-habilitadas').textContent = metricas.configs_habilitadas ?? '-';
+    document.getElementById('exm-archivos-pdf').textContent = metricas.archivos_pdf ?? '-';
+    document.getElementById('exm-cuadernillos').textContent = metricas.cuadernillos ?? '-';
+
+    const recientesBody = document.getElementById('exm-recientes-body');
+    const recientes = Array.isArray(data.recientes) ? data.recientes : [];
+    recientesBody.innerHTML = recientes.length
+      ? recientes.map(item => `
+          <tr>
+            <td><code>${item.id_examen || ''}</code></td>
+            <td>${item.grupo || ''}</td>
+            <td><span class="badge bg-secondary">${item.n_preguntas || 0}</span></td>
+            <td><small class="text-muted">${String(item.fecha || '').substring(0,16)}</small></td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="4" class="text-center text-muted py-3">Sin actividad reciente.</td></tr>';
+
+    const archivosBody = document.getElementById('exm-archivos-body');
+    const archivos = Array.isArray(data.archivos) ? data.archivos : [];
+    archivosBody.innerHTML = archivos.length
+      ? archivos.map(item => `
+          <tr>
+            <td><small>${item.nombre || ''}</small></td>
+            <td><span class="badge ${item.tipo === 'zip' ? 'bg-dark' : 'bg-danger'}">${item.tipo || 'archivo'}</span></td>
+            <td>${Number(item.tamano_kb || 0).toFixed(1)} KB</td>
+            <td><a href="${item.download_url}" class="btn btn-outline-primary btn-sm" download><i class="bi bi-download"></i></a></td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="4" class="text-center text-muted py-3">Sin archivos recientes.</td></tr>';
+  } catch (_error) {
+    document.getElementById('exm-total-generados').textContent = '!';
+    document.getElementById('exm-configs-habilitadas').textContent = '!';
+    document.getElementById('exm-archivos-pdf').textContent = '!';
+    document.getElementById('exm-cuadernillos').textContent = '!';
+    document.getElementById('exm-recientes-body').innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">No fue posible cargar la actividad.</td></tr>';
+    document.getElementById('exm-archivos-body').innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">No fue posible cargar los archivos.</td></tr>';
+  }
+}
+
+async function cargarExamenes() {
+  const tbody = document.getElementById('examenesBody');
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+  try {
+    const resp = await fetch('/api/examenes/generados?limit=50');
+    const data = await resp.json();
+    if (!data.examenes || !data.examenes.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No hay exámenes generados</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.examenes.map(e => `
+      <tr>
+        <td><code>${e.id_examen}</code></td>
+        <td>${e.grupo || ''}</td>
+        <td><span class="badge bg-secondary">${e.n_preguntas}</span></td>
+        <td><small class="text-muted">${(e.fecha || '').substring(0,16)}</small></td>
+        <td>
+          <button class="btn btn-outline-primary btn-sm" onclick="verClave('${e.id_examen}')">
+            <i class="bi bi-key"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Error al cargar</td></tr>';
+  }
+}
+
+async function consultarClave() {
+  const id = document.getElementById('inputExamenId').value.trim().toUpperCase();
+  if (!id) return;
+  await verClave(id);
+}
+
+async function consultarExamenPorId() {
+  const id = document.getElementById('inputExamenId').value.trim().toUpperCase();
+  const detalle = document.getElementById('examenDetalleResultado');
+  const error = document.getElementById('claveError');
+  detalle.classList.add('d-none');
+  error.classList.add('d-none');
+  if (!id) return;
+  try {
+    const resp = await fetch(`/api/examenes/${encodeURIComponent(id)}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.ok || !data.examen) {
+      error.textContent = `Examen "${id}" no encontrado.`;
+      error.classList.remove('d-none');
+      return;
+    }
+    const examen = data.examen;
+    document.getElementById('detalleEstudiante').textContent = examen.estudiante_nombre || '—';
+    document.getElementById('detalleDocumento').textContent = examen.estudiante_documento || '—';
+    document.getElementById('detalleGrado').textContent = examen.grado || '—';
+    document.getElementById('detalleCurso').textContent = examen.curso || '—';
+    document.getElementById('detalleVersion').textContent = examen.version || '—';
+    document.getElementById('detalleArea').textContent = examen.area || '—';
+    document.getElementById('detalleEvaluacion').textContent = examen.evaluacion || '—';
+    document.getElementById('detalleFecha').textContent = (examen.fecha_generacion || '').substring(0, 16) || '—';
+    const pdfBtn = document.getElementById('detallePdfBtn');
+    if (examen.pdf_disponible && examen.download_url) {
+      pdfBtn.href = examen.download_url;
+      pdfBtn.classList.remove('d-none');
+    } else {
+      pdfBtn.href = '#';
+      pdfBtn.classList.add('d-none');
+    }
+    detalle.classList.remove('d-none');
+    await verClave(id);
+  } catch (e) {
+    error.textContent = 'Error de conexión al consultar el examen.';
+    error.classList.remove('d-none');
+  }
+}
+
+async function verClave(examId) {
+  document.getElementById('claveResultado').classList.add('d-none');
+  try {
+    const resp = await fetch(`/api/examenes/${encodeURIComponent(examId)}/clave`);
+    const data = await resp.json();
+    if (!data.ok) {
+      return;
+    }
+    const clave = data.clave;
+    const items = Object.entries(clave)
+      .sort((a,b) => parseInt(a[0]) - parseInt(b[0]))
+      .map(([n, l]) => `<span class="badge bg-primary p-2" style="min-width:52px">${n}) ${l}</span>`)
+      .join('');
+    document.getElementById('claveId').textContent = examId;
+    document.getElementById('claveContenido').innerHTML = items;
+    document.getElementById('claveResultado').classList.remove('d-none');
+    document.getElementById('inputExamenId').value = examId;
+  } catch(e) {
+    return;
+  }
+}
+
+// Cargar evaluaciones al cambiar grado/área (tanto para consultar como generar)
+document.getElementById('configGrado').addEventListener('change', cargarEvaluacionesConfig);
+document.getElementById('configArea').addEventListener('change', cargarEvaluacionesConfig);
+document.getElementById('genGrado').addEventListener('change', cargarEvaluacionesGen);
+document.getElementById('genArea').addEventListener('change', cargarEvaluacionesGen);
+document.getElementById('maGrado').addEventListener('change', () => cargarCatalogosMultiArea());
+document.getElementById('maCurso').addEventListener('change', () => cargarCatalogosMultiArea());
+document.getElementById('maModo').addEventListener('change', actualizarEstadoMultiArea);
+
+async function cargarEvaluacionesConfig() {
+  const grado = document.getElementById('configGrado').value;
+  const area = document.getElementById('configArea').value;
+  const sel = document.getElementById('configEvaluacion');
+  sel.innerHTML = '<option value="">— Todas —</option>';
+  if (!grado && !area) return;
+  try {
+    const resp = await fetch(`/api/banco-preguntas/evaluaciones?grado=${encodeURIComponent(grado)}&area=${encodeURIComponent(area)}`);
+    const data = await resp.json();
+    (data.evaluaciones || []).forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e; opt.textContent = e;
+      sel.appendChild(opt);
+    });
+  } catch(err) {}
+}
+
+async function cargarEvaluacionesGen() {
+  const grado = document.getElementById('genGrado').value;
+  const area = document.getElementById('genArea').value;
+  const sel = document.getElementById('genEvaluacion');
+  sel.innerHTML = '<option value="">— Ninguna —</option>';
+  if (!grado || !area) return;
+  try {
+    const resp = await fetch(`/api/banco-preguntas/evaluaciones?grado=${encodeURIComponent(grado)}&area=${encodeURIComponent(area)}`);
+    const data = await resp.json();
+    (data.evaluaciones || []).forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e; opt.textContent = e;
+      sel.appendChild(opt);
+    });
+  } catch(err) {}
+}
+
+async function generarExamenes(e) {
+  e.preventDefault();
+  
+  const grado = document.getElementById('genGrado').value.trim();
+  const area = document.getElementById('genArea').value.trim();
+  const evaluacion = document.getElementById('genEvaluacion').value.trim();
+  const curso = document.getElementById('genCurso').value.trim();
+  const modoGeneracion = document.getElementById('genModoGeneracion').value;
+  const versiones = parseInt(document.getElementById('genVersiones').value) || 1;
+  const cantPreguntas = document.getElementById('genCantPreguntas').value.trim();
+  const cantTextos = parseInt(document.getElementById('genCantTextos').value) || 0;
+  const docente = document.getElementById('genDocente').value.trim();
+  const fecha = document.getElementById('genFecha').value.trim();
+  const formato = document.getElementById('genFormato').value.trim();
+  const modoHoja = document.getElementById('genModoHoja').value.trim();
+  const hojaResp = document.getElementById('genHojaRespuestas').checked;
+  const genPdf = document.getElementById('genPDF').checked;
+  const estudiante = document.getElementById('genEstudiante').value.trim();
+  
+  if (!grado || !area) {
+    mostrarAlertaGen('danger', 'Grado y Área son obligatorios');
+    return;
+  }
+  if (modoGeneracion === 'individual' && !estudiante) {
+    mostrarAlertaGen('danger', 'En modo individual debes indicar el documento del estudiante.');
+    return;
+  }
+  if (modoGeneracion === 'todos_un_pdf' && !genPdf) {
+    mostrarAlertaGen('danger', 'Para generar todos en un solo PDF debes activar la opción de PDFs.');
+    return;
+  }
+
+  const alerta = document.getElementById('genAlerta');
+  const resultDiv = document.getElementById('genResultados');
+  alerta.innerHTML = '<i class="bi bi-hourglass-split"></i> Generando exámenes...';
+  alerta.className = 'alert alert-info d-none mt-3';
+  alerta.classList.remove('d-none');
+  resultDiv.classList.add('d-none');
+
+  const payload = {
+    grado,
+    area,
+    evaluacion: evaluacion || null,
+    curso: curso || null,
+    modo_generacion: modoGeneracion,
+    cantidad_versiones: versiones,
+    cantidad_textos: cantTextos,
+    cantidad_preguntas: cantPreguntas ? parseInt(cantPreguntas) : 0,
+    docente,
+    fecha: fecha || null,
+    formato_documento: formato || null,
+    modo_hoja_respuestas: modoHoja || null,
+    generar_hoja_respuestas: hojaResp,
+    generar_pdf: genPdf,
+    estudiante_documento: modoGeneracion === 'individual' ? (estudiante || null) : null,
+  };
+
+  try {
+    const resp = await fetch('/api/examenes/generar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      mostrarAlertaGen('danger', `Error: ${data.error || 'No se pudieron generar exámenes'}`);
+      return;
+    }
+    // Mostrar resultados
+    const examenes = Array.isArray(data.examenes) ? data.examenes : (Array.isArray(data.resultados) ? data.resultados : []);
+    document.getElementById('genTotal').textContent = examenes.length;
+    const tbody = document.getElementById('genResultadosBody');
+    tbody.innerHTML = examenes.map(ex => `
+      <tr>
+        <td><code>${ex.exam_code || ex.codigo || ''}</code></td>
+        <td><span class="badge bg-primary">${ex.version || ''}</span></td>
+        <td>${ex.estudiante_nombre || ''}</td>
+        <td><small>${ex.estudiante_documento || ''}</small></td>
+        <td><span class="badge bg-secondary">${ex.cantidad_preguntas || ex.n_preguntas || ''}</span></td>
+        <td>
+          ${(ex.download_url || ex.ruta_pdf || ex.pdf) ? `<a href='${ex.download_url || ex.ruta_pdf || ex.pdf}' target='_blank' download class='btn btn-link btn-sm p-0' title='Descargar PDF'><i class="bi bi-file-pdf text-danger"></i></a>` : '—'}
+        </td>
+      </tr>
+    `).join('');
+    resultDiv.classList.remove('d-none');
+    const generatedUrl = data.archivo_generado_url || data.ruta_pdf_consolidado_url || data.ruta_pdf_consolidado || '';
+    const generatedType = data.archivo_generado_tipo || '';
+    const generatedLabel = generatedType === 'zip'
+      ? 'Descargar ZIP de exámenes'
+      : (generatedType === 'pdf' ? 'Descargar archivo generado' : 'Descargar archivo');
+    if (generatedUrl) {
+      const link = document.createElement('a');
+      link.href = generatedUrl;
+      link.download = data.archivo_generado_nombre || '';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      mostrarAlertaGen('success', `✓ Se generaron ${examenes.length} exámenes correctamente. <a href="${generatedUrl}" target="_blank" class="alert-link">${generatedLabel}</a>`);
+    } else {
+      mostrarAlertaGen('success', `✓ Se generaron ${examenes.length} exámenes correctamente`);
+    }
+  } catch (err) {
+    mostrarAlertaGen('danger', `Error de conexión: ${err.message}`);
+  }
+}
+
+function mostrarAlertaGen(tipo, msg) {
+  const alerta = document.getElementById('genAlerta');
+  alerta.className = `alert alert-${tipo} d-none mt-3`;
+  alerta.innerHTML = msg;
+  alerta.classList.remove('d-none');
+}
+
+async function cargarCatalogosMultiArea() {
+  const grado = document.getElementById('maGrado').value;
+  const curso = document.getElementById('maCurso').value;
+  const body = document.getElementById('multiAreaBody');
+  const resumen = document.getElementById('multiAreaResumen');
+  if (!grado) {
+    resumen.textContent = '';
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Selecciona un grado para cargar áreas.</td></tr>';
+    actualizarTotalPreguntasMultiArea();
+    return;
+  }
+  body.innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+  try {
+    const params = new URLSearchParams({ grado });
+    if (curso) params.set('curso', curso);
+    const resp = await fetch(`/api/examenes/multi-area/catalogos?${params.toString()}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      resumen.textContent = '';
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">No fue posible cargar el catálogo.</td></tr>';
+      return;
+    }
+    const cursoSelect = document.getElementById('maCurso');
+    const cursoActual = cursoSelect.value;
+    cursoSelect.innerHTML = '<option value="">— Todos —</option>' + (data.cursos || []).map(item => `<option value="${item}">${item}</option>`).join('');
+    if ((data.cursos || []).includes(cursoActual)) {
+      cursoSelect.value = cursoActual;
+    }
+
+    const estudianteSelect = document.getElementById('maEstudiante');
+    const estudianteActual = estudianteSelect.value;
+    estudianteSelect.innerHTML = '<option value="">— Seleccionar —</option>' + (data.estudiantes || []).map(item => `<option value="${item.documento}">${item.label}</option>`).join('');
+    if ((data.estudiantes || []).some(item => item.documento === estudianteActual)) {
+      estudianteSelect.value = estudianteActual;
+    }
+    const totalEstudiantes = Number(data.total_estudiantes || 0);
+    resumen.textContent = `${totalEstudiantes} estudiante(s) en el filtro actual`;
+
+    const areas = data.areas || [];
+    if (!areas.length) {
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No hay áreas disponibles para ese grado.</td></tr>';
+      actualizarTotalPreguntasMultiArea();
+      return;
+    }
+
+    body.innerHTML = areas.map((area, index) => `
+      <tr>
+        <td><input class="form-check-input" type="checkbox" data-ma-check="1" data-area="${area}" ${index < 2 ? 'checked' : ''}></td>
+        <td class="text-capitalize">${area}</td>
+        <td><select class="form-select form-select-sm" data-ma-evaluacion="${area}"><option value="">Cargando...</option></select></td>
+        <td><span class="small text-muted" data-ma-disponibles="${area}">Cargando...</span></td>
+        <td><input type="number" min="1" value="1" class="form-control form-control-sm" data-ma-cantidad="${area}"></td>
+      </tr>
+    `).join('');
+
+    await Promise.all(areas.map(area => cargarEvaluacionesMultiArea(area, grado)));
+    bindEventosMultiArea();
+    actualizarEstadoMultiArea();
+    actualizarTotalPreguntasMultiArea();
+  } catch (error) {
+    resumen.textContent = '';
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Error de conexión.</td></tr>';
+    actualizarTotalPreguntasMultiArea();
+  }
+}
+
+async function cargarEvaluacionesMultiArea(area, grado) {
+  const select = document.querySelector(`[data-ma-evaluacion="${area}"]`);
+  if (!select) return;
+  select.innerHTML = '<option value="">Cargando...</option>';
+  try {
+    const resp = await fetch(`/api/banco-preguntas/evaluaciones?grado=${encodeURIComponent(grado)}&area=${encodeURIComponent(area)}`);
+    const data = await resp.json();
+    const evaluaciones = data.evaluaciones || [];
+    select.innerHTML = evaluaciones.length
+      ? evaluaciones.map(item => `<option value="${item}">${item}</option>`).join('')
+      : '<option value="">Sin evaluaciones</option>';
+    await actualizarDisponibilidadMultiArea(area, grado);
+  } catch (error) {
+    select.innerHTML = '<option value="">Error al cargar</option>';
+    const disponible = document.querySelector(`[data-ma-disponibles="${area}"]`);
+    if (disponible) disponible.textContent = 'Error al cargar';
+  }
+}
+
+async function actualizarDisponibilidadMultiArea(area, grado) {
+  const evaluacion = document.querySelector(`[data-ma-evaluacion="${area}"]`)?.value || '';
+  const disponible = document.querySelector(`[data-ma-disponibles="${area}"]`);
+  const cantidad = document.querySelector(`[data-ma-cantidad="${area}"]`);
+  if (!disponible) return;
+  if (!evaluacion) {
+    disponible.textContent = 'Sin evaluación';
+    if (cantidad) cantidad.value = '1';
+    actualizarTotalPreguntasMultiArea();
+    return;
+  }
+  disponible.textContent = 'Consultando...';
+  try {
+    const params = new URLSearchParams({ grado, area, evaluacion });
+    const resp = await fetch(`/api/examenes/multi-area/disponibilidad?${params.toString()}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      disponible.textContent = 'No disponible';
+      actualizarTotalPreguntasMultiArea();
+      return;
+    }
+    const preguntas = Number(data.preguntas || 0);
+    const textos = Number(data.textos || 0);
+    disponible.textContent = `${textos} texto(s) / ${preguntas} pregunta(s)`;
+    if (cantidad) {
+      cantidad.max = preguntas > 0 ? String(preguntas) : '';
+      const actual = Number(cantidad.value || 0);
+      cantidad.value = String(preguntas > 0 ? (actual > 0 && actual <= preguntas ? actual : preguntas) : 0);
+    }
+    actualizarTotalPreguntasMultiArea();
+  } catch (error) {
+    disponible.textContent = 'Error al consultar';
+    actualizarTotalPreguntasMultiArea();
+  }
+}
+
+function bindEventosMultiArea() {
+  document.querySelectorAll('[data-ma-check="1"]').forEach(el => {
+    el.addEventListener('change', actualizarTotalPreguntasMultiArea);
+  });
+  document.querySelectorAll('[data-ma-cantidad]').forEach(el => {
+    el.addEventListener('input', actualizarTotalPreguntasMultiArea);
+  });
+  document.querySelectorAll('[data-ma-evaluacion]').forEach(el => {
+    el.addEventListener('change', async () => {
+      const area = el.getAttribute('data-ma-evaluacion');
+      const grado = document.getElementById('maGrado').value;
+      await actualizarDisponibilidadMultiArea(area, grado);
+    });
+  });
+}
+
+function actualizarTotalPreguntasMultiArea() {
+  const total = [...document.querySelectorAll('[data-ma-check="1"]:checked')].reduce((acc, check) => {
+    const area = check.getAttribute('data-area');
+    const value = Number(document.querySelector(`[data-ma-cantidad="${area}"]`)?.value || 0);
+    return acc + (value > 0 ? value : 0);
+  }, 0);
+  document.getElementById('multiAreaTotalPreguntas').textContent = `Total preguntas del cuadernillo: ${total}`;
+}
+
+function mostrarAlertaMultiArea(tipo, msg) {
+  const alerta = document.getElementById('multiAreaAlert');
+  alerta.className = `alert alert-${tipo} d-none mt-3 mb-0`;
+  alerta.innerHTML = msg;
+  alerta.classList.remove('d-none');
+}
+
+function actualizarEstadoMultiArea() {
+  const modo = document.getElementById('maModo').value;
+  document.getElementById('maEstudiante').disabled = modo !== 'individual';
+}
+
+async function generarCuadernilloMultiArea(event) {
+  event.preventDefault();
+  const grado = document.getElementById('maGrado').value;
+  const curso = document.getElementById('maCurso').value;
+  const modo = document.getElementById('maModo').value;
+  const estudianteDocumento = document.getElementById('maEstudiante').value;
+  if (!grado) {
+    mostrarAlertaMultiArea('danger', 'Debes seleccionar un grado.');
+    return;
+  }
+  if (modo === 'individual' && !estudianteDocumento) {
+    mostrarAlertaMultiArea('danger', 'Debes seleccionar un estudiante para el modo individual.');
+    return;
+  }
+
+  const areas = [...document.querySelectorAll('[data-ma-check="1"]:checked')].map(check => {
+    const area = check.getAttribute('data-area');
+    return {
+      area,
+      evaluacion: document.querySelector(`[data-ma-evaluacion="${area}"]`)?.value || '',
+      cantidad_preguntas: document.querySelector(`[data-ma-cantidad="${area}"]`)?.value || '',
+    };
+  }).filter(item => item.area && item.evaluacion && Number(item.cantidad_preguntas) > 0);
+
+  if (!areas.length) {
+    mostrarAlertaMultiArea('danger', 'Selecciona al menos un área con evaluación y preguntas.');
+    return;
+  }
+
+  mostrarAlertaMultiArea('info', 'Generando cuadernillo multiárea...');
+  try {
+    const resp = await fetch('/api/examenes/multi-area/generar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grado,
+        curso: curso || null,
+        modo_generacion: modo,
+        estudiante_documento: modo === 'individual' ? estudianteDocumento : null,
+        areas,
+      }),
+    });
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      mostrarAlertaMultiArea('danger', `Error: ${data.error || 'No fue posible generar el cuadernillo.'}`);
+      return;
+    }
+
+    const blob = await resp.blob();
+    const disposition = resp.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = match ? match[1] : (modo === 'todos' ? 'cuadernillos_multi_area.zip' : 'cuadernillo_multi_area.pdf');
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    mostrarAlertaMultiArea('success', 'Cuadernillo multiárea generado correctamente.');
+  } catch (error) {
+    mostrarAlertaMultiArea('danger', `Error de conexión: ${error.message}`);
+  }
+}
+
+// Cargar evaluaciones al cambiar grado/área (para consultar config)
+
+
+async function consultarConfig() {
+  const area = document.getElementById('configArea').value;
+  const grado = document.getElementById('configGrado').value;
+  const evaluacion = document.getElementById('configEvaluacion').value;
+  if (!area) { alert('Selecciona un área'); return; }
+
+  const params = new URLSearchParams();
+  if (area) params.append('area', area);
+  if (grado) params.append('grado', grado);
+  if (evaluacion) params.append('evaluacion', evaluacion);
+
+  try {
+    const resp = await fetch(`/api/examenes/config?${params}`);
+    const data = await resp.json();
+    if (!data.ok) {
+      alert(data.error || 'Error al consultar configuración');
+      return;
+    }
+    const cfg = data.config;
+    const mins = Math.floor(cfg.duracion_segundos / 60);
+    document.getElementById('configCards').innerHTML = `
+      <div class="col-6 col-md-3"><div class="card p-3 text-center">
+        <div class="text-muted small">Duración</div>
+        <div class="fs-4 fw-bold">${mins} min</div>
+      </div></div>
+      <div class="col-6 col-md-3"><div class="card p-3 text-center">
+        <div class="text-muted small">Preguntas</div>
+        <div class="fs-4 fw-bold">${cfg.cantidad_preguntas}</div>
+      </div></div>
+      <div class="col-6 col-md-3"><div class="card p-3 text-center">
+        <div class="text-muted small">Máx. intentos</div>
+        <div class="fs-4 fw-bold">${cfg.max_intentos}</div>
+      </div></div>
+      <div class="col-6 col-md-3"><div class="card p-3 text-center">
+        <div class="text-muted small">Estado</div>
+        <div class="fs-5 fw-bold ${cfg.habilitado ? 'text-success' : 'text-danger'}">
+          ${cfg.habilitado ? '<i class="bi bi-check-circle"></i> Activo' : '<i class="bi bi-x-circle"></i> Inactivo'}
+        </div>
+      </div></div>
+    `;
+    document.getElementById('configResultado').classList.remove('d-none');
+  } catch(e) {
+    alert('Error de conexión');
+  }
+}
+
+cargarPanelExamenes();
+</script>
+{% endblock %}

@@ -1,0 +1,3 @@
+﻿# Configuracion del servidor web en red local
+modo=red
+ruta_servidor=DatosCompartidos

@@ -1,0 +1,10 @@
+# Configuracion de despliegue del sistema de evaluacion
+# modo: local | red
+modo=local
+
+# En modo red, indique carpeta compartida principal.
+# Puede usar:
+# 1) Ruta UNC de carpeta: \\SERVIDOR_EVALUACION\sistema
+# 2) Ruta UNC directa a BD: \\SERVIDOR_EVALUACION\sistema\sistema.db
+# 3) Ruta relativa (respecto al directorio del .exe o script): ..\SistemaEvaluacion
+ruta_servidor=

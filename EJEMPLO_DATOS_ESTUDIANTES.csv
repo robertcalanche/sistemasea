@@ -1,0 +1,11 @@
+sede,jornada,grado,curso,nombre,tipodoc,documento,fechana,telefono,celular,email,genero,tipo_sangre,estado
+Sede Principal,M,1,01,Juan Pérez García,CC,1234567890,2010-05-15,6012345678,3001234567,juan@email.com,M,O+,MA
+Sede Principal,T,1,02,María Angela López,CC,0987654321,2010-08-22,6021234567,3101234567,maria@email.com,F,AB-,MA
+Sede Principal,M,2,01,Carlos Alberto Rodríguez,TI,987654321,2009-03-10,6012223334,3201234567,carlos@email.com,M,B-,MA
+Sede Secundaria,N,2,02,Ana Carolina Martínez,CC,1122334455,2009-11-30,6041112222,3301234567,ana@email.com,F,A+,MA
+Sede Secundaria,M,3,01,Roberto Felipe Ramírez,PA,AB-123456,2008-07-05,6055556666,3401234567,roberto@email.com,M,O-,MA
+Sede Secundaria,T,3,02,Camila Sofía Gómez,CC,2233445566,2008-12-18,6066667777,3501234567,camila@email.com,F,B+,MA
+Sede Principal,M,4,01,Daniel Andrés Vargas,CE,DEF-987654,2007-02-14,6077778888,3601234567,daniel@email.com,M,AB+,MA
+Sede Principal,T,4,02,Valentina María Soto,CC,3344556677,2007-09-08,6088889999,3701234567,valentina@email.com,F,O+,MA
+Sede Secundaria,N,5,01,Santiago de Jesús Torres,TI,44556677,2006-04-25,6099990000,3801234567,santiago@email.com,M,B-,MA
+Sede Secundaria,M,5,02,Isabela Rosa Hurtado,CC,4455667788,2006-10-12,6011111111,3901234567,isabela@email.com,F,A-,MA

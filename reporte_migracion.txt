@@ -1,0 +1,11 @@
+
+--- Auditoria Migracion ---
+Roles faltantes detectados y agregados: {'NFKD', 'DELETE'}
+
+--- Auditoria Migracion ---
+Roles faltantes detectados y agregados: {'CUSTOM_NEW_ROLE_FOR_TESTING'}
+
+Audit modulo estudiante finalizado.
+Rutas faltantes: []
+
+Audit modulo estudiante finalizado. No hay cambios pendientes.

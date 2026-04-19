@@ -1,0 +1,27 @@
+﻿--- Migración Módulo Superadmin ---
+Rutas detectadas en web_app.py: /superadmin, /api/v1/superadmin/resumen
+Vistas: web_superadmin, api_superadmin_resumen
+Permisos: ROL_SUPERADMIN definido en core/usuarios.py con acceso total ("*").
+Visibilidad: Menú lateral en web_app.py sincronizado.
+Templates: templates/superadmin.html verificado y funcional.
+Cambios aplicados: Ninguno requerido, el módulo se encuentra correctamente integrado y sincronizado.
+
+--- Auditoría de nuevas pestañas/subpestañas SuperAdmin ---
+Nuevas pestañas/subpestañas detectadas en escritorio y no migradas a web:
+- Certificados
+- Actas
+- Diplomas
+- Planillas
+- Plan de aula
+- Planeador de clase
+- Calendario Académico
+
+--- Auditoría de nuevas pestañas/subpestañas SuperAdmin ---
+Nuevas pestañas/subpestañas detectadas en escritorio y no migradas a web:
+- Certificados
+- Actas
+- Diplomas
+- Planillas
+- Plan de aula
+- Planeador de clase
+- Calendario Académico

@@ -1,0 +1,713 @@
+{% extends "base.html" %}
+
+{% block title %}Gestor de Matricula | SEA{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h1 class="h3 mb-1">Gestor de Matricula</h1>
+            <p class="text-muted mb-0">Administra estudiantes, carga masiva y cambios de curso por lote.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button type="button" id="btnNuevoEstudiante" class="btn btn-primary">Nuevo estudiante</button>
+            <button type="button" id="btnExportarEstudiantes" class="btn btn-outline-success">Exportar Excel</button>
+            <a href="{{ url_for('web_superadmin') }}" class="btn btn-outline-secondary">Volver a SuperAdmin</a>
+        </div>
+    </div>
+
+    <div id="alerta" class="alert d-none" role="alert"></div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <strong>Filtros</strong>
+        </div>
+        <div class="card-body">
+            <form id="filtrosForm" class="row g-2 align-items-end">
+                <!-- Filtro por nombre eliminado: solo se usan campos desglosados -->
+                <div class="col-6 col-md-2">
+                    <label for="filtroGrado" class="form-label">Grado</label>
+                    <select id="filtroGrado" class="form-select">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label for="filtroCurso" class="form-label">Curso</label>
+                    <select id="filtroCurso" class="form-select">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="filtroJornada" class="form-label">Jornada</label>
+                    <select id="filtroJornada" class="form-select">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary">Aplicar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <strong>Listado de estudiantes</strong>
+            <small id="resumenListado" class="text-muted">Cargando...</small>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:40px;"><input type="checkbox" id="checkAll"></th>
+                        <th>Documento</th>
+                        <!-- <th>Nombre</th> columna eliminada (confirmado) -->
+                        <th>Grado</th>
+                        <th>Curso</th>
+                        <th>Jornada</th>
+                        <th style="width:220px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaEstudiantesBody">
+                    <tr><td colspan="7" class="text-center text-muted py-4">Cargando datos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <button class="btn btn-sm btn-outline-primary" id="btnPrev">Anterior</button>
+                <button class="btn btn-sm btn-outline-primary" id="btnNext">Siguiente</button>
+            </div>
+            <small id="paginaInfo" class="text-muted">Pagina 1</small>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-light"><strong>Cambio masivo de curso</strong></div>
+                <div class="card-body">
+                    <p class="text-muted small">Selecciona estudiantes en la tabla y define el nuevo curso.</p>
+                    <form id="cambioCursoForm" class="row g-2">
+                        <div class="col-12 col-md-4">
+                            <label for="nuevoGrado" class="form-label">Nuevo grado</label>
+                            <select id="nuevoGrado" class="form-select" required></select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="nuevoCurso" class="form-label">Nuevo curso</label>
+                            <select id="nuevoCurso" class="form-select" required></select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="nuevaJornada" class="form-label">Nueva jornada</label>
+                            <select id="nuevaJornada" class="form-select" required></select>
+                        </div>
+                        <div class="col-12 d-grid mt-2">
+                            <button type="submit" class="btn btn-warning">Aplicar cambio a seleccionados</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-light"><strong>Importacion masiva</strong></div>
+                <div class="card-body">
+                    <p class="text-muted small">Carga un archivo CSV o XLSX con columnas de estudiante.</p>
+                    <form id="importarForm" class="row g-2" enctype="multipart/form-data">
+                        <div class="col-12">
+                            <label for="archivoImportacion" class="form-label">Archivo</label>
+                            <input type="file" id="archivoImportacion" class="form-control" accept=".csv,.xlsx" required>
+                        </div>
+                        <div class="col-12 d-grid mt-2">
+                            <button type="submit" class="btn btn-success">Importar archivo</button>
+                        </div>
+                    </form>
+                    <div id="resultadoImportacion" class="small text-muted mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="estudianteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="estudianteModalTitle">Nuevo estudiante</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <form id="estudianteForm">
+                    <div class="modal-body">
+                        <div class="row g-2">
+                            <div class="col-12 col-md-3">
+                                <label for="formDocumento" class="form-label">Documento</label>
+                                <input type="text" id="formDocumento" class="form-control" required>
+                                <div id="docDuplicadoWarn" class="d-none mt-1">
+                                    <small class="text-warning"><strong>&#9888; Documento ya registrado.</strong> Si continuas se actualizara el registro existente.</small>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formNombre1" class="form-label">Primer nombre</label>
+                                <input type="text" id="formNombre1" class="form-control" required>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formNombre2" class="form-label">Segundo nombre</label>
+                                <input type="text" id="formNombre2" class="form-control">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formGrado" class="form-label">Grado</label>
+                                <select id="formGrado" class="form-select" required></select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formCurso" class="form-label">Curso</label>
+                                <select id="formCurso" class="form-select" required></select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formApellido1" class="form-label">Primer apellido</label>
+                                <input type="text" id="formApellido1" class="form-control" required>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formApellido2" class="form-label">Segundo apellido</label>
+                                <input type="text" id="formApellido2" class="form-control">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formJornada" class="form-label">Jornada</label>
+                                <select id="formJornada" class="form-select" required></select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formTipoDocumento" class="form-label">Tipo documento</label>
+                                <select id="formTipoDocumento" class="form-select">
+                                    <option value="TI">TI</option>
+                                    <option value="CC">CC</option>
+                                    <option value="CE">CE</option>
+                                    <option value="NUIP">NUIP</option>
+                                    <option value="RC">RC</option>
+                                    <option value="PAS">PAS</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formFechaNacimiento" class="form-label">Fecha nacimiento</label>
+                                <input type="text" id="formFechaNacimiento" class="form-control" placeholder="YYYY-MM-DD">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formSexo" class="form-label">Sexo</label>
+                                <select id="formSexo" class="form-select">
+                                    <option value="">No definido</option>
+                                    <option value="M">M</option>
+                                    <option value="F">F</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formTelefono" class="form-label">Telefono</label>
+                                <input type="text" id="formTelefono" class="form-control">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formCorreo" class="form-label">Correo</label>
+                                <input type="email" id="formCorreo" class="form-control">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formSede" class="form-label">Sede</label>
+                                <input type="text" id="formSede" class="form-control">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label for="formEstado" class="form-label">Estado</label>
+                                <select id="formEstado" class="form-select">
+                                    <option value="Activo">Activo</option>
+                                    <option value="Inactivo">Inactivo</option>
+                                    <option value="Retirado">Retirado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnGuardarEstudiante">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="cambiarEstadoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cambiar estado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="cambiarEstadoForm">
+                <div class="modal-body">
+                    <p class="mb-3">Estudiante: <strong id="cambiarEstadoDoc"></strong></p>
+                    <input type="hidden" id="cambiarEstadoDocInput">
+                    <div class="mb-3">
+                        <label for="cambiarEstadoSelect" class="form-label">Nuevo estado</label>
+                        <select id="cambiarEstadoSelect" class="form-select">
+                            <option value="Activo">Activo</option>
+                            <option value="Inactivo">Inactivo</option>
+                            <option value="Retirado">Retirado</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar estado</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+<script>
+(() => {
+    const estado = {
+        page: 1,
+        pageSize: 25,
+        total: 0,
+        totalPages: 1,
+        filtros: {
+            // nombre: "", // Eliminado, solo se usan nombre1, nombre2, apellido1, apellido2
+            grado: "",
+            curso: "",
+            jornada: "",
+        },
+        seleccionados: new Set(),
+    };
+
+    const body = document.getElementById("tablaEstudiantesBody");
+    const resumen = document.getElementById("resumenListado");
+    const paginaInfo = document.getElementById("paginaInfo");
+    const checkAll = document.getElementById("checkAll");
+    const alerta = document.getElementById("alerta");
+    const modalEl = document.getElementById("estudianteModal");
+    const modal = new bootstrap.Modal(modalEl);
+    const estudianteForm = document.getElementById("estudianteForm");
+    let documentoEditando = null;
+
+    function mostrarAlerta(tipo, mensaje) {
+        alerta.className = `alert alert-${tipo}`;
+        alerta.textContent = mensaje;
+        alerta.classList.remove("d-none");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function limpiarAlerta() {
+        alerta.classList.add("d-none");
+        alerta.textContent = "";
+    }
+
+    function valor(id) {
+        return document.getElementById(id).value.trim();
+    }
+
+    async function cargarCatalogos() {
+        const r = await fetch("/api/matricula/catalogos");
+        if (!r.ok) throw new Error("No se pudieron cargar catalogos");
+        const data = await r.json();
+
+        const setOptions = (id, values, includeAny = true, labelAny = "Todos") => {
+            const sel = document.getElementById(id);
+            const selected = sel.value;
+            sel.innerHTML = includeAny ? `<option value="">${labelAny}</option>` : "";
+            (values || []).forEach(v => {
+                const op = document.createElement("option");
+                op.value = String(v);
+                op.textContent = String(v);
+                sel.appendChild(op);
+            });
+            if ([...sel.options].some(o => o.value === selected)) {
+                sel.value = selected;
+            }
+        };
+
+        setOptions("filtroGrado", data.grados || [], true, "Todos");
+        setOptions("filtroCurso", data.cursos || [], true, "Todos");
+        setOptions("filtroJornada", data.jornadas || [], true, "Todas");
+
+        setOptions("nuevoGrado", data.grados || [], false);
+        setOptions("nuevoCurso", data.cursos || [], false);
+        setOptions("nuevaJornada", data.jornadas || [], false);
+
+        setOptions("formGrado", data.grados || [], false);
+        setOptions("formCurso", data.cursos || [], false);
+        setOptions("formJornada", data.jornadas || [], false);
+    }
+
+    async function cargarListado() {
+        limpiarAlerta();
+        const params = new URLSearchParams({
+            limit: String(estado.pageSize),
+            offset: String((estado.page - 1) * estado.pageSize),
+            // nombre: estado.filtros.nombre, // Eliminado, solo se usan nombre1, nombre2, apellido1, apellido2
+            grado: estado.filtros.grado,
+            curso: estado.filtros.curso,
+            jornada: estado.filtros.jornada,
+        });
+
+        const r = await fetch(`/api/matricula/listado?${params.toString()}`);
+        if (!r.ok) {
+            body.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">No se pudo cargar el listado.</td></tr>';
+            throw new Error("No se pudo cargar listado");
+        }
+
+        const data = await r.json();
+        const items = data.estudiantes || [];
+
+        estado.total = Number(data.total || 0);
+        estado.totalPages = Math.max(1, Math.ceil(estado.total / estado.pageSize));
+
+        if (!items.length) {
+            body.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Sin resultados para los filtros actuales.</td></tr>';
+        } else {
+            body.innerHTML = items.map(est => {
+                const doc = String(est.documento || "");
+                const checked = estado.seleccionados.has(doc) ? "checked" : "";
+                return `
+<tr>
+    <td><input type="checkbox" class="check-est" data-doc="${doc}" ${checked}></td>
+    <td>${doc}</td>
+    <!-- <td>${est.nombre1 || ''} ${est.nombre2 || ''} ${est.apellido1 || ''} ${est.apellido2 || ''}</td> columna eliminada (confirmado) -->
+    <td>${est.grado || ""}</td>
+    <td>${est.curso || ""}</td>
+    <td>${est.jornada || ""}</td>
+    <td>
+        <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-doc="${doc}">Editar</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary btn-cambiar-estado" data-doc="${doc}" data-nombre="${((est.nombre1 || '') + ' ' + (est.nombre2 || '') + ' ' + (est.apellido1 || '') + ' ' + (est.apellido2 || '')).replace(/"/g, '&quot;')}" data-estado="${est.estado || 'Activo'}">Estado</button>
+        <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar" data-doc="${doc}" data-nombre="${((est.nombre1 || '') + ' ' + (est.nombre2 || '') + ' ' + (est.apellido1 || '') + ' ' + (est.apellido2 || '')).replace(/"/g, '&quot;')}">Eliminar</button>
+    </td>
+</tr>`;
+            }).join("");
+        }
+
+        resumen.textContent = `Total: ${estado.total} estudiantes`;
+        paginaInfo.textContent = `Pagina ${estado.page} de ${estado.totalPages}`;
+        document.getElementById("btnPrev").disabled = estado.page <= 1;
+        document.getElementById("btnNext").disabled = estado.page >= estado.totalPages;
+
+        body.querySelectorAll(".check-est").forEach(cb => {
+            cb.addEventListener("change", (e) => {
+                const doc = e.target.dataset.doc;
+                if (e.target.checked) estado.seleccionados.add(doc);
+                else estado.seleccionados.delete(doc);
+            });
+        });
+
+        body.querySelectorAll(".btn-editar").forEach(btn => {
+            btn.addEventListener("click", () => abrirModalEditar(btn.dataset.doc));
+        });
+
+        body.querySelectorAll(".btn-eliminar").forEach(btn => {
+            btn.addEventListener("click", () => eliminarEstudiante(btn.dataset.doc, btn.dataset.nombre));
+        });
+
+        body.querySelectorAll(".btn-cambiar-estado").forEach(btn => {
+            btn.addEventListener("click", () => abrirModalCambiarEstado(btn.dataset.doc, btn.dataset.nombre, btn.dataset.estado));
+        });
+    }
+
+    function setFormValue(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = value == null ? "" : String(value);
+    }
+
+    function resetFormularioEstudiante() {
+        estudianteForm.reset();
+        documentoEditando = null;
+        document.getElementById("estudianteModalTitle").textContent = "Nuevo estudiante";
+        const doc = document.getElementById("formDocumento");
+        doc.readOnly = false;
+        document.getElementById("docDuplicadoWarn").classList.add("d-none");
+    }
+
+    function payloadFormulario() {
+        return {
+            documento: valor("formDocumento"),
+            nombre1: valor("formNombre1"),
+            nombre2: valor("formNombre2"),
+            apellido1: valor("formApellido1"),
+            apellido2: valor("formApellido2"),
+            grado: valor("formGrado"),
+            curso: valor("formCurso"),
+            jornada: valor("formJornada"),
+            tipo_documento: valor("formTipoDocumento") || "CC",
+            fecha_nacimiento: valor("formFechaNacimiento"),
+            telefono: valor("formTelefono"),
+            correo: valor("formCorreo"),
+            sexo: valor("formSexo"),
+            sede: valor("formSede"),
+            estado: valor("formEstado") || "Activo",
+        };
+    }
+
+    async function abrirModalEditar(documento) {
+        limpiarAlerta();
+        try {
+            const r = await fetch(`/api/estudiantes/buscar/${encodeURIComponent(documento)}`);
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok || !data.estudiante) {
+                mostrarAlerta("danger", data.error || "No se pudo cargar el estudiante.");
+                return;
+            }
+            const est = data.estudiante;
+            documentoEditando = String(est.documento || documento);
+            document.getElementById("estudianteModalTitle").textContent = `Editar estudiante ${documentoEditando}`;
+            setFormValue("formDocumento", documentoEditando);
+            setFormValue("formNombre1", est.nombre1 || "");
+            setFormValue("formNombre2", est.nombre2 || "");
+            setFormValue("formApellido1", est.apellido1 || "");
+            setFormValue("formApellido2", est.apellido2 || "");
+            setFormValue("formGrado", est.grado || "");
+            setFormValue("formCurso", est.curso || "");
+            setFormValue("formJornada", est.jornada || "");
+            setFormValue("formTipoDocumento", est.tipo_documento || "CC");
+            setFormValue("formFechaNacimiento", est.fecha_nacimiento || "");
+            setFormValue("formTelefono", est.telefono || "");
+            setFormValue("formCorreo", est.correo || "");
+            setFormValue("formSexo", est.sexo || "");
+            setFormValue("formSede", est.sede || "");
+            setFormValue("formEstado", est.estado || "Activo");
+            const doc = document.getElementById("formDocumento");
+            doc.readOnly = true;
+            modal.show();
+        } catch (e) {
+            mostrarAlerta("danger", e.message || "No se pudo abrir el formulario de edición.");
+        }
+    }
+
+    async function eliminarEstudiante(documento, nombre) {
+        limpiarAlerta();
+        const nombreCompleto = [payload.nombre1, payload.nombre2, payload.apellido1, payload.apellido2].filter(Boolean).join(' ');
+        const ok = window.confirm(`¿Eliminar al estudiante ${nombreCompleto || documento} (${documento})?`);
+        if (!ok) return;
+        try {
+            const r = await fetch(`/api/estudiantes/${encodeURIComponent(documento)}`, { method: "DELETE" });
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                mostrarAlerta("danger", data.error || "No se pudo eliminar el estudiante.");
+                return;
+            }
+            estado.seleccionados.delete(String(documento));
+            await cargarCatalogos();
+            await cargarListado();
+            mostrarAlerta("success", data.mensaje || "Estudiante eliminado.");
+        } catch (e) {
+            mostrarAlerta("danger", e.message || "No se pudo eliminar el estudiante.");
+        }
+    }
+
+    document.getElementById("filtrosForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        estado.filtros.nombre1 = valor("filtroNombre1");
+        estado.filtros.nombre2 = valor("filtroNombre2");
+        // Filtros por nombre (campo único) eliminados, solo se usan nombre1 y nombre2
+        estado.filtros.apellido1 = valor("filtroApellido1");
+        estado.filtros.apellido2 = valor("filtroApellido2");
+        estado.filtros.grado = valor("filtroGrado");
+        estado.filtros.curso = valor("filtroCurso");
+        estado.filtros.jornada = valor("filtroJornada");
+        estado.page = 1;
+        await cargarListado();
+    });
+
+    document.getElementById("btnPrev").addEventListener("click", async () => {
+        if (estado.page > 1) {
+            estado.page -= 1;
+            await cargarListado();
+        }
+    });
+
+    document.getElementById("btnNext").addEventListener("click", async () => {
+        if (estado.page < estado.totalPages) {
+            estado.page += 1;
+            await cargarListado();
+        }
+    });
+
+    checkAll.addEventListener("change", () => {
+        body.querySelectorAll(".check-est").forEach(cb => {
+            cb.checked = checkAll.checked;
+            const doc = cb.dataset.doc;
+            if (checkAll.checked) estado.seleccionados.add(doc);
+            else estado.seleccionados.delete(doc);
+        });
+    });
+
+    document.getElementById("btnNuevoEstudiante").addEventListener("click", () => {
+        resetFormularioEstudiante();
+        modal.show();
+    });
+
+    document.getElementById("formDocumento").addEventListener("blur", async () => {
+        if (documentoEditando !== null) return;
+        const doc = document.getElementById("formDocumento").value.trim();
+        const warn = document.getElementById("docDuplicadoWarn");
+        if (!doc) { warn.classList.add("d-none"); return; }
+        try {
+            const r = await fetch(`/api/estudiantes/buscar/${encodeURIComponent(doc)}`);
+            if (r.ok) warn.classList.remove("d-none");
+            else warn.classList.add("d-none");
+        } catch { warn.classList.add("d-none"); }
+    });
+
+    function abrirModalCambiarEstado(documento, nombre, estadoActual) {
+        const nombreCompletoEstado = [payload.nombre1, payload.nombre2, payload.apellido1, payload.apellido2].filter(Boolean).join(' ');
+        document.getElementById("cambiarEstadoDoc").textContent = `${nombreCompletoEstado || documento} (${documento})`;
+        document.getElementById("cambiarEstadoDocInput").value = documento;
+        document.getElementById("cambiarEstadoSelect").value = estadoActual || "Activo";
+        new bootstrap.Modal(document.getElementById("cambiarEstadoModal")).show();
+    }
+
+    document.getElementById("cambiarEstadoForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        limpiarAlerta();
+        const documento = document.getElementById("cambiarEstadoDocInput").value;
+        const nuevoEstado = document.getElementById("cambiarEstadoSelect").value;
+        try {
+            const r = await fetch(`/api/estudiantes/${encodeURIComponent(documento)}/estado`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ estado: nuevoEstado }),
+            });
+            const data = await r.json().catch(() => ({}));
+            bootstrap.Modal.getInstance(document.getElementById("cambiarEstadoModal"))?.hide();
+            if (!r.ok) {
+                mostrarAlerta("danger", data.error || "No se pudo cambiar el estado.");
+                return;
+            }
+            await cargarListado();
+            mostrarAlerta("success", data.mensaje || "Estado actualizado correctamente.");
+        } catch (err) {
+            mostrarAlerta("danger", err.message || "No se pudo cambiar el estado.");
+        }
+    });
+
+    modalEl.addEventListener("hidden.bs.modal", () => {
+        resetFormularioEstudiante();
+    });
+
+    estudianteForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        limpiarAlerta();
+        const payload = payloadFormulario();
+        if (!payload.documento || !payload.nombre1 || !payload.apellido1 || !payload.grado || !payload.curso || !payload.jornada) {
+            mostrarAlerta("warning", "Completa documento, nombre1, apellido1, grado, curso y jornada.");
+            return;
+        }
+
+        const editando = Boolean(documentoEditando);
+        const url = editando
+            ? `/api/estudiantes/${encodeURIComponent(documentoEditando)}`
+            : "/api/estudiantes";
+        const method = editando ? "PUT" : "POST";
+
+        try {
+            const r = await fetch(url, {
+                method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                mostrarAlerta("danger", data.error || "No se pudo guardar el estudiante.");
+                return;
+            }
+            modal.hide();
+            await cargarCatalogos();
+            await cargarListado();
+            mostrarAlerta("success", data.mensaje || "Estudiante guardado correctamente.");
+        } catch (err) {
+            mostrarAlerta("danger", err.message || "No se pudo guardar el estudiante.");
+        }
+    });
+
+    document.getElementById("cambioCursoForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        limpiarAlerta();
+        const docs = Array.from(estado.seleccionados);
+        if (!docs.length) {
+            mostrarAlerta("warning", "Selecciona al menos un estudiante en el listado.");
+            return;
+        }
+
+        const payload = {
+            documentos: docs,
+            nuevo_grado: valor("nuevoGrado"),
+            nuevo_curso: valor("nuevoCurso"),
+            nueva_jornada: valor("nuevaJornada"),
+        };
+
+        const r = await fetch("/api/matricula/cambiar-curso", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            mostrarAlerta("danger", data.error || "No se pudo aplicar el cambio de curso.");
+            return;
+        }
+
+        estado.seleccionados.clear();
+        checkAll.checked = false;
+        await cargarListado();
+        mostrarAlerta("success", `${data.mensaje || "Cambio de curso aplicado."} Registros: ${data.total || 0}`);
+    });
+
+    document.getElementById("importarForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        limpiarAlerta();
+        const input = document.getElementById("archivoImportacion");
+        if (!input.files.length) {
+            mostrarAlerta("warning", "Selecciona un archivo CSV o XLSX para importar.");
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append("archivo", input.files[0]);
+
+        const r = await fetch("/api/matricula/importar", {
+            method: "POST",
+            body: fd,
+        });
+        const data = await r.json().catch(() => ({}));
+
+        if (!r.ok) {
+            mostrarAlerta("danger", data.error || "La importacion no pudo completarse.");
+            return;
+        }
+
+        const resumenImport = document.getElementById("resultadoImportacion");
+        resumenImport.textContent = `Registros procesados: ${data.total || 0}`;
+        await cargarCatalogos();
+        await cargarListado();
+        mostrarAlerta("success", data.mensaje || "Importacion completada.");
+    });
+
+    async function init() {
+        try {
+            await cargarCatalogos();
+            await cargarListado();
+        } catch (e) {
+            mostrarAlerta("danger", e.message || "No fue posible inicializar la pantalla.");
+        }
+    }
+
+    document.getElementById("btnExportarEstudiantes").addEventListener("click", () => {
+        const params = new URLSearchParams();
+        if (estado.filtros.grado) params.set("grado", estado.filtros.grado);
+        if (estado.filtros.curso) params.set("curso", estado.filtros.curso);
+        if (estado.filtros.jornada) params.set("jornada", estado.filtros.jornada);
+        const qs = params.toString();
+        window.location.href = `/api/estudiantes/exportar${qs ? "?" + qs : ""}`;
+    });
+
+    init();
+})();
+</script>
+{% endblock %}

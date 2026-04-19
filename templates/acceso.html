@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso - SEA</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <style>
+    :root {
+      --sea-blue: #0d4f8b;
+      --sea-blue-dark: #0b4377;
+      --sea-blue-soft: #dbeafe;
+      --sea-ink: #0f172a;
+      --sea-surface: #ffffff;
+      --sea-surface-soft: #f8fbff;
+      --sea-border: #d7e4f1;
+      --sea-shadow: 0 28px 60px rgba(15, 23, 42, 0.16);
+      --sea-accent: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--sea-ink);
+      background: #eef4fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .login-shell {
+      flex: 1;
+      min-height: 0;
+      padding: 10px 18px 2px;
+      display: flex;
+      align-items: stretch;
+    }
+
+    .login-frame {
+      width: 100%;
+      min-height: 0;
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(340px, 0.92fr) minmax(420px, 1.08fr);
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      overflow: hidden;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .login-left {
+      background: var(--sea-surface);
+      padding: 14px 38px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      border: 1px solid #c9d8ea;
+    }
+
+    .login-left::after {
+      display: none;
+    }
+
+    .login-right {
+      background: #0d4f8b;
+      color: #fff;
+      padding: 26px 34px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      border: 1px solid #0d4f8b;
+    }
+
+    .system-mark {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .system-mark img {
+      width: min(190px, 100%);
+      max-height: 190px;
+      object-fit: contain;
+    }
+
+    .system-fallback {
+      width: 104px;
+      height: 104px;
+      border-radius: 28px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, #0d4f8b 0%, #0a3d6b 100%);
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      box-shadow: 0 18px 40px rgba(13, 79, 139, 0.22);
+    }
+
+    .system-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--sea-blue);
+      text-align: center;
+      line-height: 1.18;
+      margin: 0;
+    }
+
+    .login-divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 8px 0 12px;
+    }
+
+    .form-card {
+      background: var(--sea-surface-soft);
+      border: 1px solid var(--sea-border);
+      border-radius: 0;
+      padding: 14px 22px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .form-title {
+      margin: 0 0 8px;
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .form-subtitle {
+      margin: 0 0 10px;
+      color: #64748b;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .input-shell {
+      background: #fff;
+      border: 1px solid #bfd3ea;
+      border-radius: 0;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .input-shell:focus-within {
+      border-color: var(--sea-blue);
+      box-shadow: 0 0 0 4px rgba(13, 79, 139, 0.1);
+    }
+
+    .input-badge {
+      min-width: 32px;
+      display: block;
+      background: transparent;
+      color: var(--sea-blue);
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+
+    .input-shell input {
+      width: 100%;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--sea-ink);
+      font-size: 0.96rem;
+      font-family: inherit;
+    }
+
+    .input-shell input::placeholder {
+      color: #94a3b8;
+    }
+
+    .clave-wrap {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
+      margin: 0;
+    }
+
+    .clave-wrap.visible {
+      max-height: 92px;
+      opacity: 1;
+      margin-bottom: 10px;
+    }
+
+    .submit-btn {
+      width: 100%;
+      border: 0;
+      border-radius: 0;
+      background: #0d4f8b;
+      color: #fff;
+      padding: 12px 18px;
+      font-size: 0.96rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: none;
+      transition: background 0.2s ease;
+    }
+
+    .submit-btn:hover {
+      transform: none;
+      box-shadow: none;
+      background: #0a3d6b;
+    }
+
+    .flash-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .flash {
+      border-radius: 16px;
+      padding: 13px 15px;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      border: 1px solid transparent;
+    }
+
+    .flash.error {
+      background: #fff1f2;
+      color: #9f1239;
+      border-color: #fecdd3;
+    }
+
+    .flash.success {
+      background: #ecfdf5;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .institution-head {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .institution-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .institution-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 10px;
+    }
+
+    .institution-fallback {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .institution-name {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.3;
+      color: #fff;
+      white-space: pre-line;
+    }
+
+    .institution-copy {
+      margin: 0 0 14px;
+      color: var(--sea-blue-soft);
+      font-size: 0.94rem;
+      line-height: 1.55;
+      max-width: 500px;
+    }
+
+    .hero-card {
+      background: rgba(11, 67, 119, 0.95);
+      border: 1px solid rgba(147, 197, 253, 0.16);
+      border-radius: 0;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1 1 auto;
+      box-shadow: none;
+    }
+
+    .hero-header {
+      margin: 0 0 8px;
+    }
+
+    .hero-visual {
+      display: none;
+      width: 100%;
+      min-height: 250px;
+      max-height: 340px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.05);
+      margin-bottom: 8px;
+    }
+
+    .hero-visual.visible {
+      display: block;
+    }
+
+    .hero-visual img {
+      width: 100%;
+      height: 100%;
+      min-height: 250px;
+      max-height: 340px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: 1.04rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .hero-indicator {
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #93c5fd;
+      font-size: 0.78rem;
+    }
+
+    .hero-dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .hero-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(147, 197, 253, 0.35);
+    }
+
+    .hero-dot.active {
+      background: #fff;
+    }
+
+    .login-footer {
+      width: fit-content;
+      max-width: calc(100% - 36px);
+      margin: 0 auto 0;
+      padding: 0 8px;
+      text-align: center;
+      font-size: 0.72rem;
+      line-height: 1;
+      min-height: 0.82cm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999999;
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 980px) {
+      .login-frame {
+        grid-template-columns: 1fr;
+      }
+
+      .login-left,
+      .login-right {
+        padding: 28px 24px;
+      }
+
+      .login-right {
+        min-height: 420px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .login-shell {
+        padding: 8px;
+      }
+
+      .login-frame {
+        min-height: 0;
+        border-radius: 0;
+      }
+
+      .login-left,
+      .login-right {
+        padding: 22px 18px;
+      }
+
+      .system-title {
+        font-size: 1.45rem;
+      }
+
+      .institution-head {
+        grid-template-columns: 1fr;
+      }
+
+      .institution-logo {
+        width: 76px;
+        height: 76px;
+      }
+
+      .hero-visual,
+      .hero-visual img {
+        min-height: 180px;
+        max-height: 240px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-frame">
+      <div class="login-left">
+        <div class="system-mark">
+          {% if login_logo_sistema %}
+          <img src="{{ login_logo_sistema }}" alt="SEA" />
+          {% else %}
+          <div class="system-fallback">SEA</div>
+          {% endif %}
+          <h1 class="system-title">Sistema de Evaluación Automatizada</h1>
+        </div>
+
+        <div class="login-divider"></div>
+
+        <div class="form-card">
+          <h2 class="form-title">Acceso institucional con documento</h2>
+          <p class="form-subtitle">
+            <b>Estudiantes:</b> solo digitan el número de documento.<br>
+            <b>Personal (rector, secretaria, coordinador, orientador, etc.):</b> deben ingresar clave. <span style="color:#0d4f8b">La clave por defecto es el número de documento.</span>
+          </p>
+
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-stack">
+              {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          {% endwith %}
+
+          <form method="post" action="/acceso" autocomplete="off">
+            <input type="hidden" name="next" value="{{ next_url or '/' }}" />
+
+            <label class="input-shell" for="documento">
+              <span class="input-badge">ID</span>
+              <input
+                id="documento"
+                name="documento"
+                type="text"
+                placeholder="Número de documento o admin"
+                required
+                autofocus
+                maxlength="20"
+                autocapitalize="off"
+              />
+            </label>
+
+            <div class="clave-wrap" id="claveWrap">
+              <label class="input-shell" for="clave_maestra">
+                <span class="input-badge"><i class="bi bi-key-fill"></i></span>
+                <input
+                  id="clave_maestra"
+                  name="clave_maestra"
+                  type="password"
+                  placeholder="Clave maestra"
+                  autocomplete="off"
+                />
+              </label>
+            </div>
+
+            <button type="submit" class="submit-btn">Ingresar al sistema</button>
+          </form>
+        </div>
+      </div>
+
+      <aside class="login-right">
+        <div class="institution-head">
+          <div class="institution-logo">
+            {% if login_logo_institucion %}
+            <img src="{{ login_logo_institucion }}" alt="Institución" />
+            {% else %}
+            <div class="institution-fallback">IE</div>
+            {% endif %}
+          </div>
+          <h2 class="institution-name">{{ login_nombre_institucion }}</h2>
+        </div>
+
+        <div class="hero-card">
+          <div class="hero-header">
+            <h3 class="hero-title" id="heroTitle"></h3>
+          </div>
+          <div class="hero-visual" id="heroVisualWrap">
+            <img id="heroVisual" src="" alt="Contenido institucional" />
+          </div>
+          <div class="hero-indicator">
+            <span id="heroCounter"></span>
+            <span class="hero-dots" id="heroDots"></span>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <footer class="login-footer">{{ login_footer_text }}</footer>
+
+  <script>
+    const documentoInput = document.getElementById('documento');
+    const claveWrap = document.getElementById('claveWrap');
+    const claveInput = document.getElementById('clave_maestra');
+    const heroItems = {{ login_items|tojson }};
+    const heroTitle = document.getElementById('heroTitle');
+    const heroVisualWrap = document.getElementById('heroVisualWrap');
+    const heroVisual = document.getElementById('heroVisual');
+    const heroCounter = document.getElementById('heroCounter');
+    const heroDots = document.getElementById('heroDots');
+    let heroIndex = 0;
+    let heroTimer = null;
+
+
+    // Roles que requieren clave
+    let rolesWeb = [
+      "rector",
+      "secretaria",
+      "coordinador",
+      "orientador",
+      "secretaria academica",
+      "coordinador academico",
+      "coordinadora",
+      "coordinadora academica"
+    ];
+
+    // Cargar roles desde archivo estático si existe
+    fetch('/static/roles_web.json').then(r => r.json()).then(data => { rolesWeb = data; });
+
+    function requiereClavePersonal(valor) {
+      const v = String(valor || '').trim().toLowerCase();
+      if (v === 'admin') return true;
+      if (!v) return false;
+      // Si es un número, buscar en la BD sería ideal, pero aquí solo heurística por longitud
+      // Si el usuario digita un documento, mostrar clave si es personal
+      // Si el documento tiene menos de 6 dígitos, asumimos estudiante
+      if (/^\d{6,}$/.test(v)) return true;
+      // Si el usuario digita un alias de cargo
+      return rolesWeb.some(r => v.includes(r));
+    }
+
+    function actualizarAccesoPersonal() {
+      const valor = documentoInput.value;
+      const mostrarClave = requiereClavePersonal(valor);
+      claveWrap.classList.toggle('visible', mostrarClave);
+      claveInput.required = mostrarClave;
+      if (!mostrarClave) claveInput.value = '';
+    }
+
+    documentoInput.addEventListener('input', actualizarAccesoPersonal);
+    actualizarAccesoPersonal();
+
+    function renderHeroDots(total, activeIndex) {
+      if (total <= 1) {
+        heroDots.innerHTML = '';
+        return;
+      }
+      heroDots.innerHTML = Array.from({ length: total }, (_, index) => (
+        `<span class="hero-dot ${index === activeIndex ? 'active' : ''}"></span>`
+      )).join('');
+    }
+
+    function mostrarHero(index) {
+      if (!heroItems.length) return;
+      heroIndex = index % heroItems.length;
+      const item = heroItems[heroIndex] || {};
+      heroTitle.textContent = item.titulo || 'Información institucional';
+      if (item.image_url) {
+        heroVisual.src = item.image_url;
+        heroVisualWrap.classList.add('visible');
+      } else {
+        heroVisual.src = '';
+        heroVisualWrap.classList.remove('visible');
+      }
+      heroCounter.textContent = heroItems.length > 1
+        ? `Contenido ${heroIndex + 1} de ${heroItems.length}`
+        : 'Contenido institucional';
+      renderHeroDots(heroItems.length, heroIndex);
+
+      if (heroTimer) {
+        window.clearTimeout(heroTimer);
+      }
+      if (heroItems.length > 1) {
+        heroTimer = window.setTimeout(() => mostrarHero((heroIndex + 1) % heroItems.length), 4000);
+      }
+    }
+
+    documentoInput.addEventListener('input', actualizarAccesoAdmin);
+    actualizarAccesoAdmin();
+    mostrarHero(0);
+  </script>
+</body>
+</html>

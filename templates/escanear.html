@@ -1,0 +1,1026 @@
+{% extends "base.html" %}
+{% block title %}Escanear OMR{% endblock %}
+
+{% block extra_head %}
+<!-- jsQR: decodificación QR en el navegador sin servidor -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<style>
+/* ================================================================
+   CONTENEDOR DE CÁMARA
+   ================================================================ */
+#videoWrap {
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 640px;
+  margin: 0 auto;
+  box-shadow: 0 0 0 4px #6c757d;
+  transition: box-shadow .25s ease;
+}
+#videoWrap.state-scanning  { box-shadow: 0 0 0 4px #ffc107; }
+#videoWrap.state-qr-found  { box-shadow: 0 0 0 5px #0d6efd; animation: pulse-blue .6s infinite alternate; }
+#videoWrap.state-sending   { box-shadow: 0 0 0 5px #0dcaf0; }
+#videoWrap.state-success   { box-shadow: 0 0 0 6px #198754; }
+#videoWrap.state-error     { box-shadow: 0 0 0 5px #dc3545; }
+#videoWrap.state-cooldown  { box-shadow: 0 0 0 4px #198754; }
+
+@keyframes pulse-blue {
+  from { box-shadow: 0 0 0 5px rgba(13,110,253,.6); }
+  to   { box-shadow: 0 0 0 9px rgba(13,110,253,.1); }
+}
+
+#video { width: 100%; display: block; }
+#canvasHidden { display: none; }
+
+/* Línea de escaneo animada */
+#scanLine {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ffc107, transparent);
+  top: 0;
+  animation: scanMove 2s linear infinite;
+  pointer-events: none;
+  display: none;
+}
+#videoWrap.state-scanning #scanLine,
+#videoWrap.state-qr-found #scanLine { display: block; }
+#videoWrap.state-qr-found #scanLine {
+  background: linear-gradient(90deg, transparent, #0d6efd, transparent);
+}
+@keyframes scanMove {
+  0%   { top: 0%; }
+  50%  { top: 96%; }
+  100% { top: 0%; }
+}
+
+/* Marcadores de esquina */
+.vcorner {
+  position: absolute; width: 28px; height: 28px;
+  border-style: solid; border-color: rgba(255,200,0,.9); border-width: 0;
+  transition: border-color .25s;
+  pointer-events: none;
+}
+.vcorner.tl { top: 10px; left: 10px; border-top-width: 4px; border-left-width: 4px; border-radius: 3px 0 0 0; }
+.vcorner.tr { top: 10px; right: 10px; border-top-width: 4px; border-right-width: 4px; border-radius: 0 3px 0 0; }
+.vcorner.bl { bottom: 10px; left: 10px; border-bottom-width: 4px; border-left-width: 4px; border-radius: 0 0 0 3px; }
+.vcorner.br { bottom: 10px; right: 10px; border-bottom-width: 4px; border-right-width: 4px; border-radius: 0 0 3px 0; }
+
+#videoWrap.state-qr-found .vcorner { border-color: #0d6efd; }
+#videoWrap.state-success  .vcorner { border-color: #198754; }
+
+/* Overlay de resultado flotante */
+#resultOverlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.72);
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s;
+  border-radius: 12px;
+}
+#resultOverlay.visible { opacity: 1; pointer-events: auto; }
+.overlay-nota { text-align: center; color: #fff; }
+.overlay-nota .num { font-size: 4rem; font-weight: 900; line-height: 1; }
+.overlay-nota .lbl { font-size: .9rem; opacity: .8; }
+.overlay-nota .student { font-size: 1.1rem; font-weight: 600; margin-top: .4rem; }
+
+/* Barra de estado inferior del video */
+#camBar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 5px 12px;
+  background: rgba(0,0,0,.6);
+  color: #fff; font-size: .78rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.cam-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0; background: #ffc107;
+}
+#videoWrap.state-qr-found  .cam-dot { background: #0d6efd; }
+#videoWrap.state-sending   .cam-dot { background: #0dcaf0; animation: blink .4s infinite; }
+#videoWrap.state-success   .cam-dot { background: #198754; }
+#videoWrap.state-error     .cam-dot { background: #dc3545; }
+#videoWrap.state-cooldown  .cam-dot { background: #198754; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Nota grande en panel derecho */
+.nota-grande { font-size: 3.5rem; font-weight: 900; line-height: 1; }
+.nota-aprueba { color: #198754; }
+.nota-reprueba { color: #dc3545; }
+
+/* Barra de cooldown */
+#cooldownBar {
+  height: 4px;
+  background: linear-gradient(90deg, #198754, #a8d5b8);
+  border-radius: 2px; transition: width linear;
+}
+
+/* Estadísticas de sesión */
+.session-stat { text-align: center; }
+.session-stat .num { font-size: 1.6rem; font-weight: 700; color: var(--sea-primary, #2c5f8a); }
+
+/* Badge de estado auto */
+#badgeAutoEstado {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px; font-size: .82rem;
+  font-weight: 600; border: 2px solid transparent;
+  transition: all .2s;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-camera me-2"></i>Escaneo Automático en Vivo
+    </h2>
+    <p class="text-muted mb-0 small">Apunta la cámara a la hoja — el sistema detecta y califica solo</p>
+  </div>
+  <span id="badgeAutoEstado" style="background:#6c757d;color:#fff;border-color:#6c757d">
+    <span style="width:9px;height:9px;border-radius:50%;background:#aaa;display:inline-block"></span>
+    Inactivo
+  </span>
+</div>
+
+<div id="secureContextAlert" class="alert alert-warning py-2 small d-none">
+  <i class="bi bi-shield-lock me-1"></i>
+  <span id="secureContextText"></span>
+</div>
+
+<div class="row g-3">
+  <!-- ====================================================
+       COLUMNA IZQUIERDA — Cámara
+       ==================================================== -->
+  <div class="col-lg-7">
+
+    <!-- Controles principales -->
+    <div class="card mb-3">
+      <div class="card-body py-2">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <button id="btnAutoScan" class="btn btn-success btn-sm fw-semibold px-3" onclick="toggleAutoScan()">
+            <i class="bi bi-play-circle-fill me-1"></i>Iniciar escaneo automático
+          </button>
+          <select class="form-select form-select-sm flex-fill" id="selectCamera" style="max-width:220px">
+            <option>Cargando cámaras...</option>
+          </select>
+          <button class="btn btn-outline-secondary btn-sm" onclick="reiniciarCamara()" title="Reiniciar cámara">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+          <label class="small text-muted mb-0" style="white-space:nowrap">Intervalo:</label>
+          <input type="range" class="form-range flex-fill" id="rangeInterval"
+                 min="200" max="1500" step="100" value="400"
+                 oninput="actualizarIntervalo(this.value)" style="max-width:120px"/>
+          <span class="small text-muted mb-0" id="lblInterval" style="min-width:40px">400ms</span>
+          <label class="small text-muted mb-0 ms-2" style="white-space:nowrap">Cooldown:</label>
+          <input type="range" class="form-range flex-fill" id="rangeCooldown"
+                 min="3" max="20" step="1" value="8"
+                 oninput="actualizarCooldown(this.value)" style="max-width:100px"/>
+          <span class="small text-muted mb-0" id="lblCooldown" style="min-width:30px">8s</span>
+        </div>
+        <div id="estado" class="small text-muted mt-2"></div>
+      </div>
+    </div>
+
+    <!-- VISTA DE CÁMARA -->
+    <div id="videoWrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvasHidden"></canvas>
+
+      <!-- Línea de escaneo -->
+      <div id="scanLine"></div>
+
+      <!-- Esquinas -->
+      <div class="vcorner tl"></div>
+      <div class="vcorner tr"></div>
+      <div class="vcorner bl"></div>
+      <div class="vcorner br"></div>
+
+      <!-- Overlay de resultado -->
+      <div id="resultOverlay">
+        <div class="overlay-nota">
+          <div class="num" id="overlayNota">—</div>
+          <div class="lbl">Nota final</div>
+          <div class="student" id="overlayStudent"></div>
+          <div class="mt-2">
+            <span class="badge bg-light text-dark" id="overlayCorrecto"></span>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-light btn-sm" onclick="cerrarOverlay()">
+              <i class="bi bi-x-circle me-1"></i>Continuar escaneando
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra inferior de estado -->
+      <div id="camBar">
+        <div class="cam-dot"></div>
+        <span id="camBarText">Esperando inicio...</span>
+        <span id="camBarQR" class="ms-auto badge bg-primary d-none"></span>
+      </div>
+    </div>
+
+    <!-- BARRA DE COOLDOWN -->
+    <div class="mt-2 d-none" id="cooldownWrap">
+      <div class="d-flex justify-content-between small text-muted mb-1">
+        <span>Próximo escaneo en...</span>
+        <span id="cooldownSecs"></span>
+      </div>
+      <div class="bg-light rounded" style="height:4px">
+        <div id="cooldownBar" style="width:100%"></div>
+      </div>
+    </div>
+
+    <!-- MODO MANUAL (colapsable) -->
+    <div class="card mt-3">
+      <div class="card-header py-2" style="cursor:pointer"
+           data-bs-toggle="collapse" data-bs-target="#modoManual">
+        <i class="bi bi-hand-index me-1"></i>Modo manual / carga de foto
+        <i class="bi bi-chevron-down float-end mt-1"></i>
+      </div>
+      <div class="collapse" id="modoManual">
+        <div class="card-body">
+          <p class="small text-muted mb-2">
+            Si el escaneo automático no detecta el QR, ingrésalo manualmente o sube una foto.
+          </p>
+          <div class="input-group input-group-sm mb-3">
+            <span class="input-group-text"><i class="bi bi-qr-code"></i></span>
+            <input type="text" class="form-control font-monospace"
+                   id="inputQR" placeholder="Pega el contenido del QR aquí..." />
+            <button class="btn btn-outline-secondary" onclick="parsearQR()">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+          <div id="qrInfo" class="d-none mb-3">
+            <div class="alert alert-info py-2 mb-0 small">
+              <div class="row g-1" id="qrInfoContent"></div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 align-items-center flex-wrap">
+            <button class="btn btn-success btn-sm" id="btnCapturarManual"
+                    onclick="capturarManual()" disabled>
+              <i class="bi bi-camera-fill me-1"></i>Capturar y calificar
+            </button>
+            <span class="text-muted small">— o —</span>
+            <input type="file" class="form-control form-control-sm" id="inputArchivo"
+                   accept="image/*" capture="environment" style="max-width:220px" />
+            <button class="btn btn-primary btn-sm" onclick="procesarArchivo()">
+              <i class="bi bi-upload me-1"></i>Foto
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================
+       COLUMNA DERECHA — Resultados y sesión
+       ==================================================== -->
+  <div class="col-lg-5">
+
+    <!-- ESTADÍSTICAS DE SESIÓN -->
+    <div class="card mb-3">
+      <div class="card-header py-2"><i class="bi bi-activity me-1"></i>Sesión actual</div>
+      <div class="card-body py-2">
+        <div class="row g-2 text-center">
+          <div class="col-4 session-stat">
+            <div class="num" id="sesFrames">0</div>
+            <div class="small text-muted">Frames</div>
+          </div>
+          <div class="col-4 session-stat">
+            <div class="num text-primary" id="sesQR">0</div>
+            <div class="small text-muted">QR leídos</div>
+          </div>
+          <div class="col-4 session-stat">
+            <div class="num text-success" id="sesCalif">0</div>
+            <div class="small text-muted">Calificados</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÚLTIMO RESULTADO -->
+    <div class="card mb-3 d-none" id="resultCard">
+      <div class="card-header text-white" id="resultHeader">
+        <i class="bi bi-check-circle me-1"></i>Último resultado
+      </div>
+      <div class="card-body text-center">
+        <div class="nota-grande mb-1" id="resNota">—</div>
+        <p class="text-muted small mb-2">Nota final</p>
+        <div class="d-flex justify-content-center gap-4 mb-3">
+          <div>
+            <div class="fs-4 fw-bold text-success" id="resCorrectas">—</div>
+            <div class="small text-muted">Correctas</div>
+          </div>
+          <div class="align-self-center text-muted">/</div>
+          <div>
+            <div class="fs-4 fw-bold" id="resTotal">—</div>
+            <div class="small text-muted">Total</div>
+          </div>
+        </div>
+        <hr class="my-2" />
+        <div class="text-start small" id="resInfo"></div>
+        <hr class="my-2" />
+        <div class="small fw-semibold mb-1">Respuestas detectadas</div>
+        <div id="resRespuestas" class="d-flex flex-wrap gap-1 justify-content-center"></div>
+      </div>
+    </div>
+
+    <!-- ALERTA DE ERROR -->
+    <div class="alert alert-danger d-none py-2 small" id="errorCard">
+      <i class="bi bi-exclamation-triangle me-1"></i><span id="errorMsg"></span>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div class="card">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history me-1"></i>Historial de sesión</span>
+        <button class="btn btn-outline-secondary btn-sm py-0" onclick="limpiarHistorial()">
+          <i class="bi bi-trash3"></i>
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:250px;overflow-y:auto">
+          <table class="table table-sm small mb-0">
+            <thead class="sticky-top bg-white">
+              <tr><th>Estudiante</th><th>ID Exam.</th><th>Nota</th><th>Hora</th></tr>
+            </thead>
+            <tbody id="historialBody">
+              <tr><td colspan="4" class="text-center text-muted py-2">Sin lecturas</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSTRUCCIONES RÁPIDAS -->
+    <div class="card mt-3">
+      <div class="card-header py-2" data-bs-toggle="collapse"
+           data-bs-target="#instrucciones" style="cursor:pointer">
+        <i class="bi bi-question-circle me-1"></i>Instrucciones
+        <i class="bi bi-chevron-down float-end mt-1"></i>
+      </div>
+      <div class="collapse show" id="instrucciones">
+        <div class="card-body py-2 small">
+          <ol class="ps-3 mb-2">
+            <li>Presiona <strong>«Iniciar escaneo automático»</strong></li>
+            <li>Coloca la hoja sobre superficie plana con buena iluminación</li>
+            <li>Apunta la cámara — el sistema detectará el QR y calificará solo</li>
+            <li>El resultado aparece en pantalla y se guarda automáticamente</li>
+            <li>Después del cooldown, apunta la siguiente hoja</li>
+          </ol>
+          <div class="alert alert-warning py-1 mb-0 small">
+            <i class="bi bi-lightbulb me-1"></i>
+            Asegura que los <strong>4 cuadros negros de esquina</strong> y el
+            <strong>código QR</strong> sean visibles.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// =============================================================================
+//  SEA — Escaneo Automático en Vivo
+//  Estado:   IDLE → SCANNING → QR_FOUND → SENDING → SUCCESS/ERROR → COOLDOWN
+// =============================================================================
+
+const video      = document.getElementById('video');
+const canvasH    = document.getElementById('canvasHidden');
+const ctxH       = canvasH.getContext('2d', { willReadFrequently: true });
+
+let mediaStream  = null;
+let scanTimer    = null;
+let cooldownTimer = null;
+
+// ---- Configuración ajustable por el usuario ----
+let SCAN_INTERVAL = 400;
+let COOLDOWN_SECS = 8;
+const QR_STABLE_N = 2;   // frames consecutivos para confirmar QR
+
+// ---- Estado de la máquina ----
+const State = {
+  IDLE: 'idle', SCANNING: 'scanning', QR_FOUND: 'qr-found',
+  SENDING: 'sending', SUCCESS: 'success', ERROR: 'error', COOLDOWN: 'cooldown'
+};
+let state          = State.IDLE;
+let autoScanActive = false;
+
+// ---- Estabilización de QR ----
+let lastQRText    = '';
+let qrStableCount = 0;
+let lastSentKey   = '';   // "idExamen|documento" para deduplicación
+
+// ---- Estadísticas de sesión ----
+let sesFrames = 0;
+let sesQR     = 0;
+let sesCalif  = 0;
+const historial = [];
+
+// =============================================================================
+//  CÁMARA
+// =============================================================================
+function cameraApiDisponible() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
+function contextoSeguroDisponible() {
+  return window.isSecureContext || ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
+function getSecureScanUrl() {
+  if (!window.location.host) {
+    return 'https://IP_DEL_SERVIDOR:5000/escanear';
+  }
+  return 'https://' + window.location.host + '/escanear';
+}
+
+function setEstado(txt) {
+  const estado = document.getElementById('estado');
+  if (estado) {
+    estado.textContent = txt;
+  }
+  setBarText(txt);
+}
+
+function mostrarAlertaContexto(message) {
+  const alert = document.getElementById('secureContextAlert');
+  const text = document.getElementById('secureContextText');
+  text.textContent = message;
+  alert.classList.remove('d-none');
+}
+
+function ocultarAlertaContexto() {
+  document.getElementById('secureContextAlert').classList.add('d-none');
+}
+
+function deshabilitarCamara(message) {
+  document.getElementById('btnAutoScan').disabled = true;
+  document.getElementById('btnCapturarManual').disabled = true;
+  document.getElementById('selectCamera').innerHTML = '<option>Cámara no disponible</option>';
+  setState(State.ERROR);
+  setEstado(message);
+}
+
+function validarAccesoCamara() {
+  if (!cameraApiDisponible()) {
+    const message = 'Camara no disponible. Accede por HTTPS o usa localhost.';
+    mostrarAlertaContexto(message + ' URL sugerida: ' + getSecureScanUrl());
+    deshabilitarCamara(message);
+    return false;
+  }
+
+  if (!contextoSeguroDisponible()) {
+    const message = 'Error de acceso a camara. Verifique permisos o use HTTPS.';
+    mostrarAlertaContexto(message + ' Abre: ' + getSecureScanUrl());
+    deshabilitarCamara('Camara bloqueada por contexto no seguro. Accede por HTTPS.');
+    return false;
+  }
+
+  ocultarAlertaContexto();
+  document.getElementById('btnAutoScan').disabled = false;
+  return true;
+}
+
+function describirErrorCamara(err) {
+  if (!err) {
+    return 'Error de acceso a cámara. Verifique permisos o use HTTPS.';
+  }
+  if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+    return 'Permiso de cámara denegado. Permite el acceso en el navegador y vuelve a intentar.';
+  }
+  if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+    return 'No se detectó ninguna cámara en el dispositivo.';
+  }
+  if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+    return 'La cámara está siendo usada por otra aplicación o no pudo iniciarse.';
+  }
+  if (err.name === 'SecurityError') {
+    return 'El navegador bloqueó la cámara. Usa HTTPS y acepta el certificado local.';
+  }
+  return 'Error de acceso a cámara. Verifique permisos o use HTTPS.';
+}
+
+async function iniciarCamara() {
+  if (!validarAccesoCamara()) return;
+  if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+  setEstado('Iniciando cámara...');
+
+  const deviceId = document.getElementById('selectCamera').value;
+  const validId  = deviceId && !deviceId.startsWith('Cargando');
+
+  const constraints = {
+    video: {
+      facingMode: 'environment',
+      width:  { ideal: 1280 },
+      height: { ideal: 960 },
+      ...(validId ? { deviceId: { exact: deviceId } } : {}),
+    }
+  };
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = mediaStream;
+    await new Promise(res => { video.onloadedmetadata = res; });
+    canvasH.width  = video.videoWidth;
+    canvasH.height = video.videoHeight;
+    document.getElementById('btnCapturarManual').disabled = false;
+    setEstado('Cámara lista. Presiona «Iniciar escaneo automático».');
+  } catch(err) {
+    const message = describirErrorCamara(err);
+    setEstado(message);
+    mostrarAlertaContexto(message + ' Si estás en red local, abre ' + getSecureScanUrl());
+  }
+}
+
+async function listarCamaras() {
+  if (!validarAccesoCamara()) return;
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: true });
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter(d => d.kind === 'videoinput');
+    const sel = document.getElementById('selectCamera');
+    sel.innerHTML = '';
+    cameras.forEach((cam, i) => {
+      const opt = document.createElement('option');
+      opt.value = cam.deviceId;
+      opt.textContent = cam.label || ('Cámara ' + (i + 1));
+      const lbl = (cam.label || '').toLowerCase();
+      if (lbl.includes('back') || lbl.includes('trasera') ||
+          lbl.includes('rear') || lbl.includes('environment')) {
+        opt.selected = true;
+      }
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', reiniciarCamara);
+  } catch(e) {
+    document.getElementById('selectCamera').innerHTML = '<option>Sin acceso a cámaras</option>';
+    setEstado(describirErrorCamara(e));
+  }
+}
+
+async function reiniciarCamara() {
+  const wasActive = autoScanActive;
+  if (wasActive) detenerLoop();
+  await iniciarCamara();
+  if (wasActive) iniciarLoop();
+}
+
+// =============================================================================
+//  TOGGLE ESCANEO AUTOMÁTICO
+// =============================================================================
+function toggleAutoScan() {
+  if (autoScanActive) {
+    detenerLoop();
+  } else {
+    iniciarLoop();
+  }
+}
+
+function iniciarLoop() {
+  if (!validarAccesoCamara()) return;
+  if (!mediaStream) { alert('Espera que la cámara esté lista.'); return; }
+  autoScanActive = true;
+  setState(State.SCANNING);
+  resetQRStability();
+  setEstado('Escaneando. Busca el QR en la hoja...');
+  actualizarBotonAuto();
+  scanTimer = setInterval(procesarFrame, SCAN_INTERVAL);
+}
+
+function detenerLoop() {
+  autoScanActive = false;
+  clearInterval(scanTimer);
+  clearTimeout(cooldownTimer);
+  scanTimer = null;
+  setState(State.IDLE);
+  setEstado('Escaneo automático detenido');
+  actualizarBotonAuto();
+  document.getElementById('cooldownWrap').classList.add('d-none');
+  document.getElementById('camBarQR').classList.add('d-none');
+}
+
+function actualizarBotonAuto() {
+  const btn = document.getElementById('btnAutoScan');
+  if (autoScanActive) {
+    btn.className = 'btn btn-danger btn-sm fw-semibold px-3';
+    btn.innerHTML = '<i class="bi bi-stop-circle-fill me-1"></i>Detener escaneo';
+  } else {
+    btn.className = 'btn btn-success btn-sm fw-semibold px-3';
+    btn.innerHTML = '<i class="bi bi-play-circle-fill me-1"></i>Iniciar escaneo automático';
+  }
+}
+
+// =============================================================================
+//  LOOP DE PROCESAMIENTO DE FRAMES
+// =============================================================================
+async function procesarFrame() {
+  if (state === State.SENDING || state === State.COOLDOWN) return;
+  if (!video.videoWidth) return;
+
+  sesFrames++;
+  actualizarSesion();
+
+  ctxH.drawImage(video, 0, 0, canvasH.width, canvasH.height);
+  const imageData = ctxH.getImageData(0, 0, canvasH.width, canvasH.height);
+
+  // Detectar QR en el navegador con jsQR
+  const qrResult = (typeof jsQR !== 'undefined')
+    ? jsQR(imageData.data, imageData.width, imageData.height,
+           { inversionAttempts: 'dontInvert' })
+    : null;
+
+  if (!qrResult) {
+    if (state === State.QR_FOUND) {
+      setState(State.SCANNING);
+      resetQRStability();
+      setBarText('QR perdido — sigue apuntando a la hoja...');
+      document.getElementById('camBarQR').classList.add('d-none');
+    }
+    return;
+  }
+
+  // QR detectado
+  sesQR++;
+  actualizarSesion();
+
+  const qrText  = qrResult.data;
+  const badgeQR = document.getElementById('camBarQR');
+  badgeQR.textContent = '✓ QR';
+  badgeQR.classList.remove('d-none');
+
+  // Estabilización
+  if (qrText === lastQRText) {
+    qrStableCount++;
+  } else {
+    lastQRText    = qrText;
+    qrStableCount = 1;
+    setState(State.QR_FOUND);
+    setBarText('QR detectado — estabilizando (1/' + QR_STABLE_N + ')...');
+    return;
+  }
+
+  if (qrStableCount < QR_STABLE_N) {
+    setBarText('QR estable (' + qrStableCount + '/' + QR_STABLE_N + ')...');
+    return;
+  }
+
+  // QR estabilizado — verificar deduplicación
+  const parsed   = parsearQRLocal(qrText);
+  const deduKey  = (parsed.id_examen || '') + '|' + (parsed.documento || '');
+
+  if (deduKey && deduKey === lastSentKey) {
+    setBarText('Hoja ya calificada — espera una nueva...');
+    return;
+  }
+
+  // Enviar al backend
+  clearInterval(scanTimer);
+  setState(State.SENDING);
+  lastSentKey = deduKey;
+  setBarText('Procesando hoja de respuestas...');
+  badgeQR.classList.add('d-none');
+
+  canvasH.toBlob(async (blob) => {
+    await enviarAlBackend(blob, qrText);
+  }, 'image/jpeg', 0.92);
+}
+
+// =============================================================================
+//  ENVÍO AL BACKEND
+// =============================================================================
+async function enviarAlBackend(blob, qrText) {
+  try {
+    const form = new FormData();
+    form.append('imagen', blob, 'hoja.jpg');
+    form.append('qr', qrText);
+
+    const resp = await fetch('/api/omr/procesar', { method: 'POST', body: form });
+    const data = await resp.json();
+
+    if (data.ok) {
+      sesCalif++;
+      actualizarSesion();
+      mostrarResultado(data);
+      iniciarCooldown();
+    } else {
+      mostrarError(data.error || 'No se pudo calificar la hoja');
+      iniciarCooldownBreve();
+    }
+  } catch(err) {
+    mostrarError('Error de conexión: ' + err.message);
+    iniciarCooldownBreve();
+  }
+}
+
+// =============================================================================
+//  COOLDOWN
+// =============================================================================
+function iniciarCooldown() {
+  setState(State.COOLDOWN);
+  const total = COOLDOWN_SECS * 1000;
+  const start = Date.now();
+  const wrap  = document.getElementById('cooldownWrap');
+  const bar   = document.getElementById('cooldownBar');
+  const lbl   = document.getElementById('cooldownSecs');
+  wrap.classList.remove('d-none');
+
+  function tick() {
+    const elapsed   = Date.now() - start;
+    const pct       = Math.max(0, 100 - (elapsed / total * 100));
+    const remaining = Math.max(0, Math.ceil((total - elapsed) / 1000));
+    bar.style.width  = pct + '%';
+    lbl.textContent  = remaining + 's';
+    setBarText('Próximo escaneo en ' + remaining + 's — retira la hoja');
+    if (elapsed < total) {
+      cooldownTimer = setTimeout(tick, 100);
+    } else {
+      wrap.classList.add('d-none');
+      cerrarOverlay();
+      reanudarLoop();
+    }
+  }
+  tick();
+}
+
+function iniciarCooldownBreve() {
+  setState(State.ERROR);
+  setTimeout(() => { reanudarLoop(); }, 2500);
+}
+
+function reanudarLoop() {
+  if (!autoScanActive) return;
+  resetQRStability();
+  setState(State.SCANNING);
+  setBarText('Escaneando — presenta la siguiente hoja...');
+  document.getElementById('errorCard').classList.add('d-none');
+  scanTimer = setInterval(procesarFrame, SCAN_INTERVAL);
+}
+
+// =============================================================================
+//  ESTADO DE LA MÁQUINA
+// =============================================================================
+function setState(s) {
+  state = s;
+  const wrap = document.getElementById('videoWrap');
+  wrap.className = 'state-' + s;
+
+  const badge = document.getElementById('badgeAutoEstado');
+  const map = {
+    idle:      ['Inactivo',     '#6c757d', '#fff'],
+    scanning:  ['Escaneando',   '#ffc107', '#413000'],
+    'qr-found':['QR detectado', '#0d6efd', '#fff'],
+    sending:   ['Procesando',   '#0dcaf0', '#055160'],
+    success:   ['Calificado ✓', '#198754', '#fff'],
+    error:     ['Error',        '#dc3545', '#fff'],
+    cooldown:  ['En espera',    '#198754', '#fff'],
+  };
+  const [txt, bg, fg] = map[s] || map.idle;
+  badge.textContent   = txt;
+  badge.style.background  = bg;
+  badge.style.color       = fg;
+  badge.style.borderColor = bg;
+}
+
+// =============================================================================
+//  RESULTADOS EN UI
+// =============================================================================
+function mostrarResultado(data) {
+  setState(State.SUCCESS);
+  const nota = parseFloat(data.nota);
+  const cls  = nota >= 60 ? 'nota-aprueba' : 'nota-reprueba';
+  const bg   = nota >= 60 ? 'bg-success'   : 'bg-danger';
+
+  // Overlay sobre el video
+  document.getElementById('overlayNota').textContent    = nota.toFixed(1);
+  document.getElementById('overlayNota').className      = 'num ' + cls;
+  document.getElementById('overlayStudent').textContent = data.estudiante || '';
+  document.getElementById('overlayCorrecto').textContent =
+    data.correctas + ' / ' + data.total + ' correctas';
+  document.getElementById('resultOverlay').classList.add('visible');
+
+  // Panel derecho
+  const rc = document.getElementById('resultCard');
+  rc.classList.remove('d-none');
+  document.getElementById('resultHeader').className = 'card-header text-white ' + bg;
+  document.getElementById('resNota').textContent    = nota.toFixed(1);
+  document.getElementById('resNota').className      = 'nota-grande ' + cls;
+  document.getElementById('resCorrectas').textContent = data.correctas;
+  document.getElementById('resTotal').textContent     = data.total;
+
+  document.getElementById('resInfo').innerHTML =
+    '<div class="row g-1">' +
+    '<div class="col-5 text-muted">Estudiante:</div><div class="col-7">' + (data.estudiante || '—') + '</div>' +
+    '<div class="col-5 text-muted">Área:</div><div class="col-7">' + (data.area || '—') + '</div>' +
+    '<div class="col-5 text-muted">Evaluación:</div><div class="col-7">' + (data.evaluacion || '—') + '</div>' +
+    '<div class="col-5 text-muted">ID Examen:</div><div class="col-7"><code>' + data.id_examen + '</code></div>' +
+    '</div>';
+
+  const resp = data.respuestas || {};
+  const keys = Object.keys(resp).sort((a, b) => parseInt(a) - parseInt(b));
+  document.getElementById('resRespuestas').innerHTML = keys.map(k =>
+    '<span class="badge bg-primary p-1" style="min-width:44px;font-size:.7rem">' +
+    k + ') ' + resp[k] + '</span>'
+  ).join('');
+
+  agregarHistorial(data);
+  beep(nota >= 60 ? 880 : 440, nota >= 60 ? 200 : 400);
+  setBarText('✓ Calificado: ' + (data.estudiante || 'Estudiante') + ' — Nota ' + nota.toFixed(1));
+  document.getElementById('errorCard').classList.add('d-none');
+}
+
+function mostrarError(msg) {
+  document.getElementById('errorCard').classList.remove('d-none');
+  document.getElementById('errorMsg').textContent = msg;
+  setBarText('⚠ ' + msg.substring(0, 60));
+  beep(220, 500);
+}
+
+function cerrarOverlay() {
+  document.getElementById('resultOverlay').classList.remove('visible');
+}
+
+// =============================================================================
+//  HISTORIAL & SESIÓN
+// =============================================================================
+function agregarHistorial(data) {
+  historial.unshift({
+    estudiante: data.estudiante || '—',
+    id_examen:  data.id_examen  || '—',
+    nota:       data.nota,
+    hora:       new Date().toLocaleTimeString(),
+  });
+  if (historial.length > 20) historial.pop();
+  renderHistorial();
+}
+
+function renderHistorial() {
+  const tbody = document.getElementById('historialBody');
+  if (!historial.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-2">Sin lecturas</td></tr>';
+    return;
+  }
+  tbody.innerHTML = historial.map(h => {
+    const n   = parseFloat(h.nota);
+    const cls = n >= 60 ? 'bg-success' : 'bg-danger';
+    return '<tr>' +
+      '<td>' + h.estudiante + '</td>' +
+      '<td><code style="font-size:.7rem">' + h.id_examen + '</code></td>' +
+      '<td><span class="badge ' + cls + '">' + n.toFixed(1) + '</span></td>' +
+      '<td><small class="text-muted">' + h.hora + '</small></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function limpiarHistorial() {
+  historial.length = 0;
+  renderHistorial();
+  sesCalif = sesQR = sesFrames = 0;
+  actualizarSesion();
+}
+
+function actualizarSesion() {
+  document.getElementById('sesFrames').textContent = sesFrames;
+  document.getElementById('sesQR').textContent     = sesQR;
+  document.getElementById('sesCalif').textContent  = sesCalif;
+}
+
+// =============================================================================
+//  MODO MANUAL (fallback)
+// =============================================================================
+async function parsearQR() {
+  const qrText = document.getElementById('inputQR').value.trim();
+  if (!qrText) return;
+  try {
+    const resp = await fetch('/api/omr/parsear-qr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qr: qrText }),
+    });
+    const data = await resp.json();
+    if (data.ok && data.payload) {
+      const p = data.payload;
+      document.getElementById('qrInfoContent').innerHTML = [
+        ['ID Examen', p.id_examen], ['Estudiante', p.nombre],
+        ['Grado', p.grado], ['Área', p.area],
+      ].filter(function(x) { return x[1]; }).map(function(x) {
+        return '<div class="col-6"><strong>' + x[0] + ':</strong> ' + x[1] + '</div>';
+      }).join('');
+      document.getElementById('qrInfo').classList.remove('d-none');
+    }
+  } catch(e) {}
+}
+
+function capturarManual() {
+  const qr = document.getElementById('inputQR').value.trim();
+  if (!qr) { alert('Ingresa el texto del QR primero'); return; }
+  ctxH.drawImage(video, 0, 0, canvasH.width || video.videoWidth, canvasH.height || video.videoHeight);
+  canvasH.toBlob(function(blob) {
+    if (blob) procesarBlobManual(blob, qr);
+  }, 'image/jpeg', 0.92);
+}
+
+async function procesarArchivo() {
+  const file = document.getElementById('inputArchivo').files[0];
+  const qr   = document.getElementById('inputQR').value.trim();
+  if (!file) { alert('Selecciona una imagen'); return; }
+  if (!qr)   { alert('Ingresa el texto del QR'); return; }
+  procesarBlobManual(file, qr);
+}
+
+async function procesarBlobManual(blob, qrText) {
+  setBarText('Procesando (manual)...');
+  try {
+    const form = new FormData();
+    form.append('imagen', blob, 'hoja.jpg');
+    form.append('qr', qrText);
+    const resp = await fetch('/api/omr/procesar', { method: 'POST', body: form });
+    const data = await resp.json();
+    if (data.ok) {
+      sesCalif++; actualizarSesion();
+      mostrarResultado(data);
+    } else {
+      mostrarError(data.error || 'No se pudo calificar');
+    }
+  } catch(e) { mostrarError('Error de conexión'); }
+}
+
+// =============================================================================
+//  UTILIDADES
+// =============================================================================
+function parsearQRLocal(txt) {
+  if (!txt) return {};
+  if (txt.charAt(0) === '{') {
+    try {
+      const p = JSON.parse(txt);
+      return {
+        id_examen: String(p.examen_id || p.id_examen || '').toUpperCase(),
+        documento: String(p.documento || ''),
+      };
+    } catch(e) {}
+  }
+  const m = txt.match(/ID:([A-Za-z0-9]+)/i);
+  const parts = txt.split('|');
+  return {
+    id_examen: m ? m[1].toUpperCase() : '',
+    documento: parts.length >= 2 ? parts[1] : '',
+  };
+}
+
+function resetQRStability() {
+  lastQRText    = '';
+  qrStableCount = 0;
+}
+
+function setBarText(txt) {
+  document.getElementById('camBarText').textContent = txt;
+}
+
+function actualizarIntervalo(val) {
+  SCAN_INTERVAL = parseInt(val);
+  document.getElementById('lblInterval').textContent = val + 'ms';
+  if (scanTimer) {
+    clearInterval(scanTimer);
+    scanTimer = setInterval(procesarFrame, SCAN_INTERVAL);
+  }
+}
+
+function actualizarCooldown(val) {
+  COOLDOWN_SECS = parseInt(val);
+  document.getElementById('lblCooldown').textContent = val + 's';
+}
+
+// Beep con Web Audio API
+function beep(freq, dur) {
+  try {
+    var ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    var osc  = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type            = 'sine';
+    gain.gain.setValueAtTime(.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + dur / 1000);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur / 1000 + .05);
+  } catch(e) {}
+}
+
+// =============================================================================
+//  INICIALIZACIÓN
+// =============================================================================
+listarCamaras().then(iniciarCamara);
+
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) resetQRStability();
+});
+</script>
+{% endblock %}

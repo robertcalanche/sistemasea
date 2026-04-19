@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+{% block title %}Banco de Preguntas{% endblock %}
+
+{% block content %}
+<!-- ENCABEZADO -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-database me-2"></i>Banco de Preguntas
+    </h2>
+    <p class="text-muted mb-0 small">Gestiona, filtra y administra el banco de preguntas del sistema</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <span class="badge bg-primary fs-6 align-self-center" id="totalBadge">0 preguntas</span>
+    <button class="btn btn-success btn-sm" onclick="abrirModalNueva()">
+      <i class="bi bi-plus-lg me-1"></i>Nueva pregunta
+    </button>
+    <button class="btn btn-outline-primary btn-sm" onclick="abrirModalImportar()">
+      <i class="bi bi-upload me-1"></i>Importar
+    </button>
+    <div class="dropdown">
+      <button class="btn btn-outline-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-trash me-1"></i>Eliminar
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" onclick="confirmarLimpiarFiltros()">
+          <i class="bi bi-funnel me-2 text-warning"></i>Eliminar por filtros activos
+        </a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="#" onclick="confirmarVaciarBanco()">
+          <i class="bi bi-exclamation-triangle me-2"></i>Vaciar banco completo
+        </a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Grado</label>
+        <select class="form-select form-select-sm" id="filtroGrado">
+          <option value="">— Todos —</option>
+          {% for g in grados %}
+          <option value="{{ g }}">{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Área</label>
+        <select class="form-select form-select-sm" id="filtroArea">
+          <option value="">— Todas —</option>
+          {% for a in areas %}
+          <option value="{{ a }}">{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Evaluación</label>
+        <select class="form-select form-select-sm" id="filtroEvaluacion">
+          <option value="">— Todas —</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">&nbsp;</label>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary btn-sm flex-grow-1" onclick="buscar(0)">
+            <i class="bi bi-search me-1"></i>Buscar
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" title="Limpiar filtros" onclick="limpiarFiltros()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABLA -->
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle small mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:52px">#</th>
+            <th>Enunciado</th>
+            <th style="width:80px">Grado</th>
+            <th style="width:120px">Área</th>
+            <th style="width:140px">Evaluación</th>
+            <th style="width:80px" class="text-center">Correcta</th>
+            <th style="width:90px" class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="preguntasBody">
+          <tr><td colspan="7" class="text-center text-muted py-5">
+            <i class="bi bi-search fs-4 d-block mb-2 opacity-50"></i>
+            Selecciona filtros y presiona <strong>Buscar</strong>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PAGINACIÓN -->
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <small class="text-muted" id="paginaInfo"></small>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary btn-sm" id="btnAnterior" onclick="paginar(-1)" disabled>
+      <i class="bi bi-chevron-left"></i> Anterior
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" id="btnSiguiente" onclick="paginar(1)" disabled>
+      Siguiente <i class="bi bi-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ===================== MODAL PREGUNTA (Crear / Editar) ===================== -->
+<div class="modal fade" id="modalPregunta" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i><span id="modalPreguntaTitulo">Nueva Pregunta</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="pregId">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Grado <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" id="pregGrado" placeholder="ej. 5, 6°, décimo">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Área <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" id="pregArea" placeholder="ej. matemáticas">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Evaluación</label>
+            <input type="text" class="form-control form-control-sm" id="pregEvaluacion" placeholder="ej. evaluación 1">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Período</label>
+            <input type="text" class="form-control form-control-sm" id="pregPeriodo" placeholder="ej. 1, 2, 3, 4">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Curso</label>
+            <input type="text" class="form-control form-control-sm" id="pregCurso" placeholder="ej. 5A, 6B">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">ID Contexto</label>
+            <input type="text" class="form-control form-control-sm" id="pregIdContexto" placeholder="opcional">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small">Contexto / Texto de apoyo</label>
+            <textarea class="form-control form-control-sm" id="pregContexto" rows="2" placeholder="Texto de lectura o contexto (opcional)"></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small">Enunciado <span class="text-danger">*</span></label>
+            <textarea class="form-control form-control-sm" id="pregEnunciado" rows="3" placeholder="Escribe el enunciado de la pregunta..."></textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Opción A</label>
+            <input type="text" class="form-control form-control-sm" id="pregOpcionA">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Opción B</label>
+            <input type="text" class="form-control form-control-sm" id="pregOpcionB">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Opción C</label>
+            <input type="text" class="form-control form-control-sm" id="pregOpcionC">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Opción D</label>
+            <input type="text" class="form-control form-control-sm" id="pregOpcionD">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Respuesta correcta <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" id="pregCorrecta">
+              <option value="">— Seleccionar —</option>
+              <option value="a">A</option>
+              <option value="b">B</option>
+              <option value="c">C</option>
+              <option value="d">D</option>
+            </select>
+          </div>
+        </div>
+        <div class="alert alert-danger mt-3 d-none small" id="modalPreguntaError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btnGuardarPregunta" onclick="guardarPregunta()">
+          <i class="bi bi-save me-1"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL IMPORTAR ===================== -->
+<div class="modal fade" id="modalImportar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Importar Preguntas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">Sube un archivo <strong>CSV</strong> o <strong>Excel (.xlsx/.xls)</strong> con las preguntas. Las columnas deben incluir: <code>enunciado</code>, <code>opcion_a</code>, <code>opcion_b</code>, <code>opcion_c</code>, <code>opcion_d</code>, <code>correcta</code>, <code>grado</code>, <code>area</code>, <code>evaluacion</code>.</p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Archivo CSV / Excel</label>
+          <input type="file" class="form-control form-control-sm" id="importarArchivo" accept=".csv,.xlsx,.xls">
+        </div>
+        <div class="alert alert-success d-none small" id="importarOk"></div>
+        <div class="alert alert-danger d-none small" id="importarError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="btnImportar" onclick="ejecutarImportar()">
+          <i class="bi bi-upload me-1"></i>Importar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL CONFIRMAR ===================== -->
+<div class="modal fade" id="modalConfirmar" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar acción</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalConfirmarTexto"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-danger btn-sm" id="btnConfirmarOk">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let paginaActual = 0;
+const LIMITE = 50;
+let totalGlobal = 0;
+let modalPreguntaInst = null;
+let modalImportarInst = null;
+let modalConfirmarInst = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  modalPreguntaInst = new bootstrap.Modal(document.getElementById('modalPregunta'));
+  modalImportarInst = new bootstrap.Modal(document.getElementById('modalImportar'));
+  modalConfirmarInst = new bootstrap.Modal(document.getElementById('modalConfirmar'));
+  document.getElementById('filtroGrado').addEventListener('change', cargarEvaluaciones);
+  document.getElementById('filtroArea').addEventListener('change', cargarEvaluaciones);
+});
+
+/* -------- Catálogos -------- */
+async function cargarEvaluaciones() {
+  const grado = document.getElementById('filtroGrado').value;
+  const area = document.getElementById('filtroArea').value;
+  const sel = document.getElementById('filtroEvaluacion');
+  sel.innerHTML = '<option value="">— Todas —</option>';
+  if (!grado && !area) return;
+  try {
+    const resp = await fetch(`/api/banco-preguntas/evaluaciones?grado=${encodeURIComponent(grado)}&area=${encodeURIComponent(area)}`);
+    const data = await resp.json();
+    (data.evaluaciones || []).forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e; opt.textContent = e;
+      sel.appendChild(opt);
+    });
+  } catch(err) {}
+}
+
+/* -------- Búsqueda / paginación -------- */
+async function buscar(offset) {
+  paginaActual = offset;
+  const grado = document.getElementById('filtroGrado').value;
+  const area = document.getElementById('filtroArea').value;
+  const evaluacion = document.getElementById('filtroEvaluacion').value;
+  const params = new URLSearchParams({ limit: LIMITE, offset });
+  if (grado) params.append('grado', grado);
+  if (area) params.append('area', area);
+  if (evaluacion) params.append('evaluacion', evaluacion);
+
+  const tbody = document.getElementById('preguntasBody');
+  tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Cargando...</td></tr>`;
+
+  try {
+    const resp = await fetch(`/api/banco-preguntas?${params}`);
+    const data = await resp.json();
+    totalGlobal = data.total || 0;
+
+    document.getElementById('totalBadge').textContent = `${totalGlobal} preguntas`;
+    document.getElementById('paginaInfo').textContent = totalGlobal
+      ? `Mostrando ${offset + 1}–${Math.min(offset + LIMITE, totalGlobal)} de ${totalGlobal}`
+      : '';
+    document.getElementById('btnAnterior').disabled = offset <= 0;
+    document.getElementById('btnSiguiente').disabled = (offset + LIMITE) >= totalGlobal;
+
+    if (!data.preguntas || !data.preguntas.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-5">
+        <i class="bi bi-inbox fs-4 d-block mb-2 opacity-50"></i>
+        No se encontraron preguntas con esos criterios
+      </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.preguntas.map(p => {
+      const enunciado = String(p.enunciado || p.pregunta || '').substring(0, 100);
+      const correcta = (p.correcta || p.respuesta_correcta || p.opcion_correcta || '?').toString().toUpperCase();
+      return `<tr>
+        <td class="text-muted small">${p.id}</td>
+        <td>${escHtml(enunciado)}${enunciado.length >= 100 ? '…' : ''}</td>
+        <td><span class="badge bg-secondary">${escHtml(p.grado || '')}</span></td>
+        <td><small class="text-truncate d-block" style="max-width:120px">${escHtml(p.area || '')}</small></td>
+        <td><small class="text-muted text-truncate d-block" style="max-width:140px">${escHtml(p.evaluacion || '')}</small></td>
+        <td class="text-center"><span class="badge bg-success">${escHtml(correcta)}</span></td>
+        <td class="text-center">
+          <button class="btn btn-xs btn-outline-primary py-0 px-1 me-1" title="Editar" onclick="editarPregunta(${p.id})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-xs btn-outline-danger py-0 px-1" title="Eliminar" onclick="confirmarEliminar(${p.id})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4"><i class="bi bi-wifi-off me-2"></i>Error al cargar datos</td></tr>`;
+  }
+}
+
+function paginar(dir) {
+  buscar(Math.max(0, paginaActual + (dir * LIMITE)));
+}
+
+function limpiarFiltros() {
+  document.getElementById('filtroGrado').value = '';
+  document.getElementById('filtroArea').value = '';
+  document.getElementById('filtroEvaluacion').innerHTML = '<option value="">— Todas —</option>';
+  document.getElementById('preguntasBody').innerHTML =
+    `<tr><td colspan="7" class="text-center text-muted py-5">
+      <i class="bi bi-search fs-4 d-block mb-2 opacity-50"></i>
+      Selecciona filtros y presiona <strong>Buscar</strong>
+    </td></tr>`;
+  document.getElementById('totalBadge').textContent = '0 preguntas';
+  document.getElementById('paginaInfo').textContent = '';
+  document.getElementById('btnAnterior').disabled = true;
+  document.getElementById('btnSiguiente').disabled = true;
+}
+
+/* -------- CRUD Pregunta -------- */
+function abrirModalNueva() {
+  document.getElementById('modalPreguntaTitulo').textContent = 'Nueva Pregunta';
+  document.getElementById('pregId').value = '';
+  ['pregGrado','pregArea','pregEvaluacion','pregPeriodo','pregCurso','pregIdContexto',
+   'pregContexto','pregEnunciado','pregOpcionA','pregOpcionB','pregOpcionC','pregOpcionD'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('pregCorrecta').value = '';
+  document.getElementById('modalPreguntaError').classList.add('d-none');
+  modalPreguntaInst.show();
+}
+
+async function editarPregunta(id) {
+  try {
+    const resp = await fetch(`/api/banco-preguntas/${id}`);
+    const data = await resp.json();
+    if (!data.ok || !data.pregunta) { alert('No se pudo cargar la pregunta.'); return; }
+    const p = data.pregunta;
+    document.getElementById('modalPreguntaTitulo').textContent = `Editar Pregunta #${id}`;
+    document.getElementById('pregId').value = id;
+    document.getElementById('pregGrado').value = p.grado || '';
+    document.getElementById('pregArea').value = p.area || '';
+    document.getElementById('pregEvaluacion').value = p.evaluacion || '';
+    document.getElementById('pregPeriodo').value = p.periodo || '';
+    document.getElementById('pregCurso').value = p.curso || '';
+    document.getElementById('pregIdContexto').value = p.id_contexto || '';
+    document.getElementById('pregContexto').value = p.contexto || '';
+    document.getElementById('pregEnunciado').value = p.enunciado || '';
+    document.getElementById('pregOpcionA').value = p.opcion_a || '';
+    document.getElementById('pregOpcionB').value = p.opcion_b || '';
+    document.getElementById('pregOpcionC').value = p.opcion_c || '';
+    document.getElementById('pregOpcionD').value = p.opcion_d || '';
+    const correcta = (p.correcta || p.respuesta_correcta || '').toString().toLowerCase();
+    document.getElementById('pregCorrecta').value = correcta;
+    document.getElementById('modalPreguntaError').classList.add('d-none');
+    modalPreguntaInst.show();
+  } catch(e) {
+    alert('Error al cargar la pregunta.');
+  }
+}
+
+async function guardarPregunta() {
+  const id = document.getElementById('pregId').value.trim();
+  const enunciado = document.getElementById('pregEnunciado').value.trim();
+  const correcta = document.getElementById('pregCorrecta').value;
+  const errEl = document.getElementById('modalPreguntaError');
+
+  if (!enunciado) { mostrarErrorModal(errEl, 'El enunciado es obligatorio.'); return; }
+  if (!correcta) { mostrarErrorModal(errEl, 'Debes seleccionar la respuesta correcta.'); return; }
+
+  const payload = {
+    grado: document.getElementById('pregGrado').value.trim() || null,
+    area: document.getElementById('pregArea').value.trim() || null,
+    evaluacion: document.getElementById('pregEvaluacion').value.trim() || null,
+    periodo: document.getElementById('pregPeriodo').value.trim() || null,
+    curso: document.getElementById('pregCurso').value.trim() || null,
+    id_contexto: document.getElementById('pregIdContexto').value.trim() || null,
+    contexto: document.getElementById('pregContexto').value.trim() || null,
+    enunciado,
+    opcion_a: document.getElementById('pregOpcionA').value.trim() || null,
+    opcion_b: document.getElementById('pregOpcionB').value.trim() || null,
+    opcion_c: document.getElementById('pregOpcionC').value.trim() || null,
+    opcion_d: document.getElementById('pregOpcionD').value.trim() || null,
+    correcta,
+  };
+
+  const btn = document.getElementById('btnGuardarPregunta');
+  btn.disabled = true;
+  try {
+    let resp;
+    if (id) {
+      resp = await fetch(`/api/banco-preguntas/${id}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+    } else {
+      resp = await fetch('/api/banco-preguntas', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+    }
+    const data = await resp.json();
+    if (!data.ok) { mostrarErrorModal(errEl, data.error || 'Error al guardar.'); return; }
+    modalPreguntaInst.hide();
+    buscar(paginaActual);
+  } catch(e) {
+    mostrarErrorModal(errEl, 'Error de red al guardar.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* -------- Eliminar pregunta individual -------- */
+function confirmarEliminar(id) {
+  document.getElementById('modalConfirmarTexto').innerHTML =
+    `¿Deseas eliminar la pregunta <strong>#${id}</strong>? Esta acción no se puede deshacer.`;
+  document.getElementById('btnConfirmarOk').onclick = async () => {
+    modalConfirmarInst.hide();
+    try {
+      const resp = await fetch(`/api/banco-preguntas/${id}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.ok) buscar(paginaActual);
+      else alert(data.error || 'No se pudo eliminar.');
+    } catch(e) { alert('Error de red.'); }
+  };
+  modalConfirmarInst.show();
+}
+
+/* -------- Vaciar banco completo -------- */
+function confirmarVaciarBanco() {
+  document.getElementById('modalConfirmarTexto').innerHTML =
+    `<div class="text-danger fw-bold mb-2"><i class="bi bi-exclamation-octagon me-2"></i>¡ATENCIÓN!</div>
+     Esta acción eliminará <strong>TODAS</strong> las preguntas del banco. No se puede deshacer.<br>
+     ¿Deseas continuar?`;
+  document.getElementById('btnConfirmarOk').onclick = async () => {
+    modalConfirmarInst.hide();
+    try {
+      const resp = await fetch('/api/banco-preguntas/vaciar', { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.ok) { limpiarFiltros(); alert(`Banco vaciado. Eliminadas: ${data.eliminadas}`); }
+      else alert(data.error || 'No se pudo vaciar el banco.');
+    } catch(e) { alert('Error de red.'); }
+  };
+  modalConfirmarInst.show();
+}
+
+/* -------- Eliminar por filtros activos -------- */
+function confirmarLimpiarFiltros() {
+  const grado = document.getElementById('filtroGrado').value;
+  const area = document.getElementById('filtroArea').value;
+  const evaluacion = document.getElementById('filtroEvaluacion').value;
+  if (!grado && !area && !evaluacion) {
+    alert('Selecciona al menos un filtro (grado, área o evaluación) antes de usar esta opción.');
+    return;
+  }
+  const desc = [grado && `grado: ${grado}`, area && `área: ${area}`, evaluacion && `evaluación: ${evaluacion}`]
+    .filter(Boolean).join(', ');
+  document.getElementById('modalConfirmarTexto').innerHTML =
+    `¿Deseas eliminar <strong>todas</strong> las preguntas que coincidan con los filtros:<br>
+     <code>${escHtml(desc)}</code>?<br><br>Esta acción no se puede deshacer.`;
+  document.getElementById('btnConfirmarOk').onclick = async () => {
+    modalConfirmarInst.hide();
+    const payload = {};
+    if (grado) payload.grado = grado;
+    if (area) payload.area = area;
+    if (evaluacion) payload.evaluacion = evaluacion;
+    try {
+      const resp = await fetch('/api/banco-preguntas/limpiar', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (data.ok) { buscar(0); alert(`Eliminadas: ${data.eliminadas} preguntas.`); }
+      else alert(data.error || 'No se pudieron eliminar.');
+    } catch(e) { alert('Error de red.'); }
+  };
+  modalConfirmarInst.show();
+}
+
+/* -------- Importar -------- */
+function abrirModalImportar() {
+  document.getElementById('importarArchivo').value = '';
+  document.getElementById('importarOk').classList.add('d-none');
+  document.getElementById('importarError').classList.add('d-none');
+  modalImportarInst.show();
+}
+
+async function ejecutarImportar() {
+  const archivo = document.getElementById('importarArchivo').files[0];
+  const okEl = document.getElementById('importarOk');
+  const errEl = document.getElementById('importarError');
+  okEl.classList.add('d-none');
+  errEl.classList.add('d-none');
+  if (!archivo) { errEl.textContent = 'Selecciona un archivo.'; errEl.classList.remove('d-none'); return; }
+
+  const formData = new FormData();
+  formData.append('archivo', archivo);
+  const btn = document.getElementById('btnImportar');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/banco-preguntas/importar', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.ok) {
+      const errCount = (data.errores || []).length;
+      okEl.innerHTML = `Importadas: <strong>${data.guardadas}</strong> preguntas.` +
+        (errCount ? ` <span class="text-warning">${errCount} filas con errores.</span>` : '');
+      okEl.classList.remove('d-none');
+      buscar(0);
+    } else {
+      errEl.textContent = data.error || 'Error al importar.';
+      errEl.classList.remove('d-none');
+    }
+  } catch(e) {
+    errEl.textContent = 'Error de red al importar.';
+    errEl.classList.remove('d-none');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* -------- Utilidades -------- */
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function mostrarErrorModal(el, msg) {
+  el.textContent = msg;
+  el.classList.remove('d-none');
+}
+</script>
+<style>
+.btn-xs { font-size: .75rem; line-height: 1.2; }
+</style>
+{% endblock %}

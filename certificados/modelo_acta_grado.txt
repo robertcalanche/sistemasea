@@ -1,0 +1,20 @@
+ACTA DE GRADO
+
+En el corregimiento de Piedras de Moler, municipio de Zapayán (Magdalena), a los seis (06) días del mes de diciembre de 2024, se reunieron con el fin de formalizar la graduación de los alumnos de undécimo grado, el suscrito Rector, en la Rectoría de la INSTITUCIÓN EDUCATIVA DEPARTAMENTAL “DAGOBERTO OROZCO BORJA” del corregimiento de Piedras de Moler, municipio de Zapayán (Magdalena), Institución aprobada según Resolución No. 1320 del 02 de Diciembre de 2022, en el Nivel de Educación Media Académica y autorizada por la Secretaria de Educación del Departamento del Magdalena,  para otorgar el título de Bachiller Académico en la Modalidad Académica.
+
+Comprobada la situación legal y académica de cada uno de los alumnos que cursaron y aprobaron los estudios correspondientes al Nivel de Educación Media Académica, llenando los requisitos del respectivo Proyecto Educativo Institucional, se procedió a otorgar el TÍTULO DE BACHILLER ACADÉMICO al graduando cuyos nombres, apellidos y número de documento de identidad se relacionan a continuación:
+
+{nombre.upper()}
+T.I. No. {documento} de Zapayán
+
+Es fiel copia tomada de su acta original general No. {numero_acta} de fecha {fecha_grado}, que consta de 65 alumnos que comienzan con el nombre de Xiomara Yaneth Altamar Arrieta y cierra con el nombre de Valentina Del Carmen Zabaleta Villa.
+En constancia se firma la presente por quienes intervinieron, en cumplimiento de lo ordenado en el Artículo 11º del Decreto 1860 de agosto 3 de 1994.
+Firmado y sellado por el Licenciado {nombre_rector} (Rector).
+
+Dada en el corregimiento de Piedras de Moler, Municipio de Zapayán (Magdalena), a los seis (06) días del mes de diciembre de 2024.
+
+FIRMADO Y SELLADO
+
+{nombre_rector}
+CC. No. {cc_rector}
+Rector

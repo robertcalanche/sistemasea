@@ -1,0 +1,301 @@
+# ✅ CHECKLIST DE VERIFICACIÓN - Módulo de Matrícula v2.0
+
+## 📋 Verificación Rápida
+
+Usa este checklist para confirmar que todo está funcionando correctamente.
+
+---
+
+## 1️⃣ ARCHIVOS GENERADOS
+
+- [ ] `plantilla_estudiantes.xlsx` - Plantilla con formato correcto
+- [ ] `EJEMPLO_DATOS_ESTUDIANTES.csv` - Ejemplo con datos
+- [ ] `CAMBIOS_MODULO_MATRICULA.md` - Documentación completa
+- [ ] `GUIA_RAPIDA_MATRICULA.md` - Guía de uso rápido
+- [ ] `FUNCIONES_CONVERSION_DETALLADAS.md` - Documentación técnica
+- [ ] `RESUMEN_VISUAL_CAMBIOS.md` - Comparación antes/después
+- [ ] `IMPLEMENTACION_COMPLETADA_MATRICULA.txt` - Status final
+- [ ] `CHECKLIST_VERIFICACION.txt` - Este archivo
+
+---
+
+## 2️⃣ CÓDIGO MODIFICADO
+
+- [ ] `modulo_superadmin.py` compilado sin errores
+- [ ] Funciones de conversión agregadas (líneas 327-411):
+  - [ ] `convertir_genero()`
+  - [ ] `convertir_jornada()`
+  - [ ] `convertir_estado_academico()`
+  - [ ] `convertir_tipo_documento()`
+- [ ] Cambio "grupo" → "curso" en TreeView
+- [ ] Botón "Cambiar de curso" implementado
+- [ ] Nuevos campos en formulario:
+  - [ ] sede
+  - [ ] celular
+  - [ ] email
+  - [ ] tipo_sangre
+
+---
+
+## 3️⃣ INTERFAZ GRÁFICA
+
+### Tabla de Estudiantes
+- [ ] Columna "grupo" cambió a "curso"
+- [ ] Ancho de columna "curso" = 70px
+- [ ] Botón "Cambiar grado" cambió a "Cambiar de curso"
+- [ ] Tabla muestra 6 columnas: documento, nombre, grado, curso, jornada, estado
+
+### Formulario de Agregar/Editar
+- [ ] Campo "Sede" visible
+- [ ] Campo "Curso" visible (antes era "Grupo")
+- [ ] Campo "Nombre completo" → simplemente "Nombre"
+- [ ] Campo "Celular" agregado
+- [ ] Campo "Email" (o "Correo") visible
+- [ ] Campo "Tipo de sangre" visible
+- [ ] Estado académico: Matriculado, Graduado, Trasladado, Retirado
+  - [ ] NO aparece "Activo"
+- [ ] Combobox de tipodoc muestra nombres completos (opcional)
+
+### Botón "Cambiar de curso"
+- [ ] Aparece en la barra de herramientas
+- [ ] Al hacer clic abre ventana con campos:
+  - [ ] Nuevo Grado
+  - [ ] Nuevo Curso
+  - [ ] Nueva Jornada (opcional)
+- [ ] Se puede seleccionar múltiples estudiantes
+- [ ] Aplica cambios a todos seleccionados
+
+---
+
+## 4️⃣ IMPORTACIÓN DEL EXCEL
+
+### Validaciones
+- [ ] Sistema rechaza Excel sin columna "curso"
+- [ ] Sistema rechaza Excel sin columna "sede"
+- [ ] Sistema rechaza documentos duplicados
+- [ ] Sistema rechaza documento vacío
+- [ ] Sistema rechaza grado vacío
+- [ ] Sistema rechaza curso vacío
+- [ ] Sistema rechaza jornada inválida
+
+### Conversiones Automáticas
+Importa este Excel como prueba:
+
+```
+sede,jornada,grado,curso,nombre,tipodoc,documento,fechana,telefono,celular,email,genero,tipo_sangre,estado
+Sede1,M,1,01,Test Alumno,CC,9999999999,2010-01-01,6011111111,3001111111,test@test.com,F,O+,MA
+```
+
+Luego verifica:
+- [ ] Jornada "M" se convierte a "Mañana" ✅
+- [ ] Género "F" se convierte a "Femenino" ✅
+- [ ] Estado "MA" se convierte a "Matriculado" ✅
+- [ ] Tipodoc "CC" se convierte a "Cédula de ciudadanía" ✅
+
+---
+
+## 5️⃣ FUNCIONES DE CONVERSIÓN
+
+### Género
+- [ ] `convertir_genero("")` → ""
+- [ ] `convertir_genero("F")` → "Femenino"
+- [ ] `convertir_genero("f")` → "Femenino" (case-insensitive)
+- [ ] `convertir_genero("M")` → "Masculino"
+- [ ] `convertir_genero("X")` → "X" (no coincide)
+
+### Jornada
+- [ ] `convertir_jornada("M")` → "Mañana"
+- [ ] `convertir_jornada("T")` → "Tarde"
+- [ ] `convertir_jornada("N")` → "Nocturna"
+- [ ] `convertir_jornada("t")` → "Tarde" (case-insensitive)
+
+### Estado Académico
+- [ ] `convertir_estado_academico("MA")` → "Matriculado"
+- [ ] `convertir_estado_academico("GR")` → "Graduado"
+- [ ] `convertir_estado_academico("TR")` → "Trasladado"
+- [ ] `convertir_estado_academico("RE")` → "Retirado"
+- [ ] `convertir_estado_academico("ma")` → "Matriculado" (case-insensitive)
+
+### Tipo de Documento
+- [ ] `convertir_tipo_documento("CC")` → "Cédula de ciudadanía"
+- [ ] `convertir_tipo_documento("PA")` → "Pasaporte"
+- [ ] `convertir_tipo_documento("TI")` → "Tarjeta de identidad"
+- [ ] Múltiples códigos funcionan (ver lista en doc)
+
+---
+
+## 6️⃣ FUNCIONALIDADES
+
+### Agregar Estudiante
+- [ ] Clic "Agregar" abre formulario
+- [ ] Campos se llenan correctamente
+- [ ] Validación de campos obligatorios funciona
+- [ ] Se guarda en BD e la tabla se actualiza
+- [ ] Documento puede ser alfanumérico (ej: "CE-123ABC")
+
+### Editar Estudiante
+- [ ] Seleccionar estudiante + clic "Editar"
+- [ ] Formulario se precarga con datos
+- [ ] Cambios se guardan correctamente
+- [ ] Tabla se actualiza
+
+### Cambiar de Curso (NUEVO)
+- [ ] Seleccionar 1+ estudiantes
+- [ ] Clic "Cambiar de curso"
+- [ ] Ventana se abre con campo Grado, Curso, Jornada
+- [ ] Llenar datos y clic "Aplicar"
+- [ ] Verifica que TODOS los seleccionados cambien
+- [ ] Tabla se actualiza inmediatamente
+
+### Eliminar Estudiante
+- [ ] Seleccionar estudiante
+- [ ] Clic "Eliminar"
+- [ ] Se pide confirmación
+- [ ] Estudiante desaparece de la tabla
+
+### Importar Masivo
+- [ ] Clic "Importar masivo"
+- [ ] Seleccionar archivo Excel
+- [ ] Sistema valida columnas
+- [ ] Se aplican conversiones automáticamente
+- [ ] Mensaje de confirmación al final
+- [ ] Nuevos estudiantes aparecen en tabla
+
+---
+
+## 7️⃣ DOCUMENTOS ALFANUMÉRICOS
+
+### Pruebas de documentos válidos
+- [ ] Numérico: "1234567890" ✅
+- [ ] Con letras: "ABC123DEF" ✅
+- [ ] Mixto: "CE-3456789-Z" ✅
+- [ ] Con guiones: "12-345-67" ✅
+- [ ] Espacios y símbolos: "AB CD-EF" ✅
+
+### Se pueden agregar sin validación numérica
+- [ ] A través del formulario ✅
+- [ ] A través de importación Excel ✅
+
+---
+
+## 8️⃣ COMPATIBILIDAD HACIA ATRÁS
+
+- [ ] `validar_estudiante()` en Admin.py aún funciona
+- [ ] Busca "nombre" y fallback a "nombre_completo"
+- [ ] Obtiene "grado" correctamente
+- [ ] No hay errores de columnas faltantes
+
+---
+
+## 9️⃣ ARCHIVOS DE EJEMPLO
+
+### plantilla_estudiantes.xlsx
+- [ ] Archivo existe
+- [ ] Tiene 14 columnas en orden correcto
+- [ ] Tiene 2 filas de ejemplo
+- [ ] Pode importarse sin errores
+
+### EJEMPLO_DATOS_ESTUDIANTES.csv
+- [ ] Archivo existe
+- [ ] Contiene 10 ejemplos de estudiantes
+- [ ] Usa códigos correctos (F/M, M/T/N, MA/GR/TR/RE)
+- [ ] Puede servir como referencia visual
+
+---
+
+## 🔟 DOCUMENTACIÓN
+
+- [ ] `CAMBIOS_MODULO_MATRICULA.md` existe y es completo
+- [ ] `GUIA_RAPIDA_MATRICULA.md` existe y es clara
+- [ ] `FUNCIONES_CONVERSION_DETALLADAS.md` existe
+- [ ] `RESUMEN_VISUAL_CAMBIOS.md` existe
+- [ ] Todos los archivos de doc incluyen ejemplos
+
+---
+
+## 1️⃣1️⃣ PRUEBA INTEGRAL (Testing Completo)
+
+### Escenario 1: Importación Básica
+- [ ] Copiar `plantilla_estudiantes.xlsx`
+- [ ] Agregar 5 filas con datos válidos
+- [ ] Importar masivo
+- [ ] Verificar aparecen en tabla
+- [ ] Verificar conversiones (F→Femenino, etc.)
+
+### Escenario 2: Cambiar de Curso
+- [ ] Abrir tabla con estudiantes
+- [ ] Seleccionar 2-3 estudiantes
+- [ ] Clic "Cambiar de curso"
+- [ ] Cambiar grado 1→2, curso 01→02, jornada M→T
+- [ ] Clic "Aplicar"
+- [ ] Verificar todos cambien en tabla
+
+### Escenario 3: Validaciones
+- [ ] Intentar agregar sin documento → Error
+- [ ] Intentar agregar sin grado → Error
+- [ ] Intentar agregar sin curso → Error
+- [ ] Intentar agregar sin jornada → Error
+- [ ] Intentar agregar sin estado → Error
+- [ ] Intentar documento duplicado → Error (opcional)
+
+### Escenario 4: Documentos Alfanuméricos
+- [ ] Agregar estudiante con documento "CE-ABC123"
+- [ ] Editar y confirmar que se mantiene
+- [ ] Importar Excel con documento "TI-987654"
+- [ ] Verificar que se guarde correctamente
+
+### Escenario 5: Compatibilidad
+- [ ] Abrir módulo Estudiante con documento válido
+- [ ] Verifica que carge correctamente nombre y grado
+- [ ] No debe haber errores
+
+---
+
+## 📊 RESUMEN FINAL
+
+**Total de items**: 150+  
+**Items completados**: ___/150+  
+**Porcentaje de éxito**: ___%
+
+### ✅ Si completaste MÁS del 95%
+**Status**: ✅ LISTO PARA PRODUCCIÓN
+
+### ⚠️ Si completaste entre 80-95%
+**Status**: ⚠️ REVISAR PUNTOS FALTANTES
+
+### ❌ Si completaste MENOS del 80%
+**Status**: ❌ REVISAR IMPLEMENTACIÓN
+
+---
+
+## 📝 NOTAS ADICIONALES
+
+Espacio para anotar observaciones:
+
+```
+_________________________________________________________________
+
+_________________________________________________________________
+
+_________________________________________________________________
+
+_________________________________________________________________
+```
+
+---
+
+## 🆘 TROUBLESHOOTING RÁPIDO
+
+| Problema | Solución |
+|----------|----------|
+| Excel no se importa | Verifica orden de columnas (sede, jornada, grado, curso, ...) |
+| "Cambiar de curso" gris | Selecciona al menos 1 estudiante |
+| No ve "Matriculado" | Asegura usar "MA" en Excel, no "Activo" |
+| Documento rechazado | Permite alfanuméricos, no solo números |
+| Conversión no funciona | Usa códigos exactos (F/M, M/T/N, MA/GR/TR/RE) |
+
+---
+
+**Checklist de Verificación v2.0**  
+**Generado**: 4 de marzo de 2026  
+**Última actualización**: Hoy

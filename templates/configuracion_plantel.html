@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Configuracion Plantel | SEA{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h1 class="h3 mb-1">Configuracion Institucional</h1>
+            <p class="text-muted mb-0">Administra datos del plantel, escala de valoracion y logo.</p>
+        </div>
+        <a href="{{ url_for('web_superadmin') }}" class="btn btn-outline-secondary">Volver a SuperAdmin</a>
+    </div>
+
+    <div id="alerta" class="alert d-none" role="alert"></div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light"><strong>Datos del plantel</strong></div>
+        <div class="card-body">
+            <form id="formPlantel" class="row g-2">
+                <div class="col-12 col-md-6"><label class="form-label" for="nombre_institucion">Nombre institucion</label><input class="form-control" id="nombre_institucion" required></div>
+                <div class="col-12 col-md-3"><label class="form-label" for="codigo_dane">Codigo DANE</label><input class="form-control" id="codigo_dane"></div>
+                <div class="col-12 col-md-3"><label class="form-label" for="nit">NIT</label><input class="form-control" id="nit"></div>
+
+                <div class="col-12 col-md-6"><label class="form-label" for="decreto_funcionamiento">Decreto funcionamiento</label><input class="form-control" id="decreto_funcionamiento"></div>
+                <div class="col-12 col-md-6"><label class="form-label" for="resolucion_aprobacion">Resolucion aprobacion</label><input class="form-control" id="resolucion_aprobacion"></div>
+
+                <div class="col-12 col-md-3"><label class="form-label" for="anio_lectivo">Anio lectivo</label><input class="form-control" id="anio_lectivo" placeholder="2026"></div>
+                <div class="col-12 col-md-3"><label class="form-label" for="telefono">Telefono</label><input class="form-control" id="telefono"></div>
+                <div class="col-12 col-md-6"><label class="form-label" for="correo_institucional">Correo institucional</label><input class="form-control" id="correo_institucional" type="email"></div>
+
+                <div class="col-12 col-md-4"><label class="form-label" for="departamento">Departamento</label><input class="form-control" id="departamento"></div>
+                <div class="col-12 col-md-4"><label class="form-label" for="municipio">Municipio</label><input class="form-control" id="municipio"></div>
+                <div class="col-12 col-md-4"><label class="form-label" for="corregimiento_localidad">Corregimiento/Localidad</label><input class="form-control" id="corregimiento_localidad"></div>
+
+                <div class="col-12"><label class="form-label" for="direccion">Direccion</label><input class="form-control" id="direccion"></div>
+
+                <div class="col-12 col-md-4"><label class="form-label" for="jornadas">Jornadas (coma)</label><input class="form-control" id="jornadas" placeholder="Manana,Tarde"></div>
+                <div class="col-12 col-md-4"><label class="form-label" for="dominio_web">Dominio web</label><input class="form-control" id="dominio_web"></div>
+                <div class="col-12 col-md-4"><label class="form-label" for="logo_path">Ruta logo</label><input class="form-control" id="logo_path" readonly></div>
+
+                <div class="col-12 col-md-4"><label class="form-label" for="rector_nombre">Rector nombre</label><input class="form-control" id="rector_nombre"></div>
+                <div class="col-12 col-md-4"><label class="form-label" for="rector_identificacion">Rector identificacion</label><input class="form-control" id="rector_identificacion"></div>
+                <div class="col-12 col-md-4"><label class="form-label" for="rector_cargo">Rector cargo</label><input class="form-control" id="rector_cargo"></div>
+
+                <div class="col-12 col-md-4"><label class="form-label" for="secretaria_nombre">Secretaria nombre</label><input class="form-control" id="secretaria_nombre"></div>
+                <div class="col-12 col-md-4"><label class="form-label" for="secretaria_identificacion">Secretaria identificacion</label><input class="form-control" id="secretaria_identificacion"></div>
+                <div class="col-12 col-md-4"><label class="form-label" for="secretaria_cargo">Secretaria cargo</label><input class="form-control" id="secretaria_cargo"></div>
+
+                <div class="col-12 d-grid mt-2"><button type="submit" class="btn btn-primary">Guardar configuracion</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light"><strong>Escala de valoracion</strong></div>
+                <div class="card-body">
+                    <p class="small text-muted">Edita rangos sin solapamiento.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="tablaEscala">
+                            <thead><tr><th>Desde</th><th>Hasta</th><th>Letra</th><th>Concepto</th><th>Desempeno</th><th>Recomendacion</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <button type="button" id="btnAgregarFilaEscala" class="btn btn-sm btn-outline-secondary">Agregar fila</button>
+                    <button type="button" id="btnGuardarEscala" class="btn btn-sm btn-success">Guardar escala</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light"><strong>Logo institucional</strong></div>
+                <div class="card-body">
+                    <form id="formLogo" class="row g-2" enctype="multipart/form-data">
+                        <div class="col-12">
+                            <label class="form-label" for="archivoLogo">Selecciona imagen (PNG/JPG/BMP)</label>
+                            <input type="file" id="archivoLogo" class="form-control" accept=".png,.jpg,.jpeg,.bmp" required>
+                        </div>
+                        <div class="col-12 d-grid"><button type="submit" class="btn btn-warning">Actualizar logo</button></div>
+                    </form>
+                    <div class="mt-3">
+                        <img id="previewLogo" src="" alt="Logo" style="max-height:120px; display:none;" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+<script>
+(() => {
+    const alerta = document.getElementById("alerta");
+    const formIds = [
+        "nombre_institucion","codigo_dane","nit","decreto_funcionamiento","resolucion_aprobacion","anio_lectivo",
+        "departamento","municipio","corregimiento_localidad","direccion","jornadas","rector_nombre","rector_identificacion",
+        "rector_cargo","secretaria_nombre","secretaria_identificacion","secretaria_cargo","telefono","correo_institucional",
+        "dominio_web","logo_path"
+    ];
+
+    function show(type, message) {
+        alerta.className = `alert alert-${type}`;
+        alerta.textContent = message;
+        alerta.classList.remove("d-none");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function clear() {
+        alerta.classList.add("d-none");
+        alerta.textContent = "";
+    }
+
+    function rowEscala(item = {}) {
+        return `
+<tr>
+    <td><input class="form-control form-control-sm e-desde" type="number" step="0.1" value="${item.desde ?? ""}"></td>
+    <td><input class="form-control form-control-sm e-hasta" type="number" step="0.1" value="${item.hasta ?? ""}"></td>
+    <td><input class="form-control form-control-sm e-letra" value="${item.letra ?? ""}"></td>
+    <td><input class="form-control form-control-sm e-concepto" value="${item.concepto ?? ""}"></td>
+    <td><input class="form-control form-control-sm e-desempeno" value="${item.desempeno ?? ""}"></td>
+    <td><input class="form-control form-control-sm e-recomendacion" value="${item.recomendacion ?? ""}"></td>
+</tr>`;
+    }
+
+    function leerEscala() {
+        return [...document.querySelectorAll("#tablaEscala tbody tr")].map(tr => ({
+            desde: tr.querySelector(".e-desde").value,
+            hasta: tr.querySelector(".e-hasta").value,
+            letra: tr.querySelector(".e-letra").value,
+            concepto: tr.querySelector(".e-concepto").value,
+            desempeno: tr.querySelector(".e-desempeno").value,
+            recomendacion: tr.querySelector(".e-recomendacion").value,
+        }));
+    }
+
+    async function cargarConfig() {
+        const r = await fetch("/api/plantel/config");
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            show("danger", data.error || "No se pudo cargar configuracion de plantel.");
+            return;
+        }
+        const conf = data.configuracion || {};
+        formIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = conf[id] || "";
+        });
+        if (conf.logo_path) {
+            const prev = document.getElementById("previewLogo");
+            prev.src = `/${String(conf.logo_path).replace(/^\/+/, "")}?t=${Date.now()}`;
+            prev.style.display = "inline-block";
+        }
+    }
+
+    async function cargarEscala() {
+        const r = await fetch("/api/plantel/escala");
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            show("danger", data.error || "No se pudo cargar escala de valoracion.");
+            return;
+        }
+        const body = document.querySelector("#tablaEscala tbody");
+        const escala = data.escala || [];
+        body.innerHTML = escala.map(rowEscala).join("");
+        if (!escala.length) body.innerHTML = rowEscala();
+    }
+
+    document.getElementById("formPlantel").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clear();
+        const payload = {};
+        formIds.forEach(id => {
+            if (id === "logo_path") return;
+            payload[id] = document.getElementById(id).value;
+        });
+
+        const r = await fetch("/api/plantel/config", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            show("danger", data.error || "No se pudo guardar configuracion.");
+            return;
+        }
+        show("success", data.mensaje || "Configuracion guardada.");
+        await cargarConfig();
+    });
+
+    document.getElementById("btnAgregarFilaEscala").addEventListener("click", () => {
+        document.querySelector("#tablaEscala tbody").insertAdjacentHTML("beforeend", rowEscala());
+    });
+
+    document.getElementById("btnGuardarEscala").addEventListener("click", async () => {
+        clear();
+        const payload = { escala: leerEscala() };
+        const r = await fetch("/api/plantel/escala", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            show("danger", data.error || "No se pudo guardar escala.");
+            return;
+        }
+        show("success", data.mensaje || "Escala guardada.");
+        await cargarEscala();
+    });
+
+    document.getElementById("formLogo").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clear();
+        const fileInput = document.getElementById("archivoLogo");
+        if (!fileInput.files.length) {
+            show("warning", "Selecciona un archivo de logo.");
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append("archivo", fileInput.files[0]);
+
+        const r = await fetch("/api/plantel/logo", { method: "POST", body: fd });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            show("danger", data.error || "No se pudo actualizar el logo.");
+            return;
+        }
+        show("success", data.mensaje || "Logo actualizado.");
+        await cargarConfig();
+    });
+
+    async function init() {
+        await cargarConfig();
+        await cargarEscala();
+    }
+
+    init();
+})();
+</script>
+{% endblock %}

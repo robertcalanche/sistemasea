@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% block title %}SuperAdmin{% endblock %}
+
+{% block extra_head %}
+<style>
+  body, .superadmin-page { font-family: 'Segoe UI', 'Roboto', Arial, sans-serif; background: #f5f7fb; color: #1f2937; }
+  .superadmin-hero {
+    background: linear-gradient(135deg, #2563eb 60%, #3b82f6 100%);
+    color: #fff;
+    border-radius: 18px;
+    padding: 2.2rem 2rem 1.6rem 2rem;
+    box-shadow: 0 8px 32px rgba(37,99,235,.13);
+    margin-bottom: 2.2rem;
+  }
+  .superadmin-hero .muted { color: rgba(255,255,255,.82); }
+  .superadmin-hero h2 { font-size: 2.1rem; font-weight: 700; letter-spacing: .5px; }
+  .superadmin-hero .fw-semibold { font-size: 1.1rem; }
+  .kpi-card {
+    border-left: 5px solid #2563eb;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(37,99,235,.07);
+    margin-bottom: 0.5rem;
+  }
+  .kpi-value { font-size: 2.1rem; font-weight: 800; color: #2563eb; }
+  .card, .phase-card {
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(37,99,235,.07);
+    border: none;
+    margin-bottom: 1.2rem;
+  }
+  .card-header {
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 10px 10px 0 0 !important;
+    font-size: 1.08rem;
+    letter-spacing: .2px;
+  }
+  .feature-pill {
+    display: inline-flex; align-items: center; gap: .45rem;
+    border-radius: 999px; padding: .45rem 1.1rem; margin: .2rem;
+    background: #f0f4fb; color: #2563eb; text-decoration: none; font-weight: 500;
+    box-shadow: 0 1px 4px rgba(37,99,235,.06);
+    transition: background .18s, color .18s;
+  }
+  .feature-pill:hover { background: #e0eaff; color: #174ea6; }
+  .feature-pill.pending { background: #f6f6f6; color: #777; cursor: default; }
+  .phase-card { border-radius: 12px; overflow: hidden; }
+  .phase-state {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .85rem; border-radius: 999px; padding: .28rem .7rem;
+    font-weight: 700;
+    background: #e0eaff; color: #2563eb;
+  }
+  .phase-state.activa { background: rgba(25,135,84,.12); color: #198754; }
+  .phase-state.completada { background: rgba(13,110,253,.12); color: #0d6efd; }
+  /* Botones */
+  .btn-primary, .btn-superadmin {
+    background: #2563eb;
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(37,99,235,.09);
+    transition: background .18s, box-shadow .18s;
+  }
+  .btn-primary:hover, .btn-superadmin:hover {
+    background: #174ea6;
+    box-shadow: 0 4px 16px rgba(37,99,235,.13);
+    color: #fff;
+  }
+  .btn-outline-primary {
+    border: 2px solid #2563eb;
+    color: #2563eb;
+    background: #fff;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: background .18s, color .18s;
+  }
+  .btn-outline-primary:hover {
+    background: #2563eb;
+    color: #fff;
+  }
+  /* Tablas */
+  .table {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 1rem;
+  }
+  .table thead th {
+    background: #e0eaff;
+    color: #2563eb;
+    border-bottom: 2px solid #d1e0fa;
+    font-weight: 700;
+    font-size: .98rem;
+    letter-spacing: .2px;
+  }
+  .table tbody tr:hover { background: #f0f4fb; }
+  .table td, .table th { border: none; }
+  /* Menú lateral (si aplica) */
+  .sidebar {
+    background: #fff;
+    border-right: 1px solid #e0eaff;
+    box-shadow: 2px 0 8px rgba(37,99,235,.04);
+  }
+  .sidebar .nav-link.active, .sidebar .nav-link:hover {
+    background: #2563eb;
+    color: #fff !important;
+    font-weight: 600;
+  }
+  .sidebar .nav-link i { color: #2563eb; }
+  /* Formularios */
+  .form-control, .form-select {
+    border-radius: 8px;
+    border: 1.5px solid #d1e0fa;
+    font-size: 1rem;
+    padding: .6rem 1rem;
+    background: #f8fafc;
+    color: #1f2937;
+    margin-bottom: 1rem;
+  }
+  .form-control:focus, .form-select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px #e0eaff;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="superadmin-page">
+  <div class="superadmin-hero mb-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+      <div>
+        <div class="small text-uppercase fw-semibold muted mb-2">Migración por Fases</div>
+        <h2 class="mb-2 fw-bold"><i class="bi bi-shield-lock me-2"></i>Hub SuperAdmin</h2>
+        <p class="mb-0 muted">Concentra la transición del módulo SuperAdmin de escritorio a web sin intentar replicar todo en un solo salto.</p>
+      </div>
+      <div class="text-end">
+        <div class="small muted">Rol activo</div>
+        <div class="fw-semibold">{{ web_user.get('nombre', 'Administrador') }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4" id="superadmin-kpis">
+    <div class="col-6 col-lg-2"><div class="card kpi-card h-100 p-3"><div class="small text-muted">Docentes</div><div class="kpi-value" id="kpi-docentes">—</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card kpi-card h-100 p-3"><div class="small text-muted">Cargas</div><div class="kpi-value" id="kpi-cargas">—</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card kpi-card h-100 p-3"><div class="small text-muted">Estudiantes</div><div class="kpi-value" id="kpi-estudiantes">—</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card kpi-card h-100 p-3"><div class="small text-muted">Preguntas</div><div class="kpi-value" id="kpi-preguntas">—</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card kpi-card h-100 p-3"><div class="small text-muted">Resultados</div><div class="kpi-value" id="kpi-resultados">—</div></div></div>
+    <div class="col-6 col-lg-2"><div class="card kpi-card h-100 p-3"><div class="small text-muted">Exámenes</div><div class="kpi-value" id="kpi-examenes">—</div></div></div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><i class="bi bi-diagram-3 me-2"></i>Roadmap de Migración</div>
+    <div class="card-body">
+      <div id="superadmin-progreso" class="mb-3 d-none">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <small class="text-muted fw-semibold">Progreso de migración</small>
+          <small id="progreso-label" class="text-muted"></small>
+        </div>
+        <div class="progress" style="height:10px;">
+          <div id="progreso-bar" class="progress-bar bg-success" role="progressbar" style="width:0%"></div>
+        </div>
+      </div>
+      <div id="superadmin-fases" class="row g-3">
+        <div class="col-12 text-center text-muted py-4">Cargando fases...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><i class="bi bi-lightning-charge me-2"></i>Módulos Web Disponibles</div>
+    <div class="card-body">
+      {% if web_can_access('/gestion-academica') %}
+      <a class="feature-pill" href="/gestion-academica"><i class="bi bi-kanban"></i>Gestión Académica</a>
+      {% endif %}
+      {% if web_can_access('/orientacion') %}
+      <a class="feature-pill" href="/orientacion"><i class="bi bi-heart-pulse"></i>Orientación Escolar</a>
+      {% endif %}
+      {% if web_can_access('/secretaria') %}
+      <a class="feature-pill" href="/secretaria"><i class="bi bi-folder-check"></i>Secretaría Académica</a>
+      {% endif %}
+      {% if web_can_access('/docente') %}
+      <a class="feature-pill" href="/docente"><i class="bi bi-person-workspace"></i>Panel Docente</a>
+      {% endif %}
+      {% if web_can_access('/carga-academica') %}
+      <a class="feature-pill" href="/carga-academica"><i class="bi bi-diagram-3"></i>Carga Académica</a>
+      {% endif %}
+      {% if web_can_access('/banco-preguntas') %}
+      <a class="feature-pill" href="/banco-preguntas"><i class="bi bi-database"></i>Banco de Preguntas</a>
+      {% endif %}
+      {% if web_can_access('/examenes') %}
+      <a class="feature-pill" href="/examenes"><i class="bi bi-file-earmark-text"></i>Generar Exámenes</a>
+      {% endif %}
+      {% if web_can_access('/calificaciones') %}
+      <a class="feature-pill" href="/calificaciones"><i class="bi bi-bar-chart-line"></i>Calificaciones</a>
+      {% endif %}
+      {% if web_can_access('/matricula') %}
+      <a class="feature-pill" href="/matricula"><i class="bi bi-people-fill"></i>Gestor Matrícula</a>
+      {% endif %}
+      {% if web_can_access('/plan-estudios') %}
+      <a class="feature-pill" href="/plan-estudios"><i class="bi bi-journal-text"></i>Plan de Estudios</a>
+      {% endif %}
+      {% if web_can_access('/planta-docente') %}
+      <a class="feature-pill" href="/planta-docente"><i class="bi bi-person-badge"></i>Planta Docente</a>
+      {% endif %}
+      {% if web_can_access('/maestro') %}
+      <a class="feature-pill" href="/maestro"><i class="bi bi-shield-lock"></i>Acceso Maestro</a>
+      {% endif %}
+      {% if web_can_access('/seguridad') %}
+      <a class="feature-pill" href="/seguridad"><i class="bi bi-shield-check"></i>Seguridad</a>
+      {% endif %}
+      {% if web_can_access('/configuracion-plantel') %}
+      <a class="feature-pill" href="/configuracion-plantel"><i class="bi bi-building"></i>Configuración Plantel</a>
+      {% endif %}
+      {% if web_can_access('/certificados') %}
+      <a class="feature-pill" href="/certificados"><i class="bi bi-award"></i>Certificados</a>
+      {% endif %}
+      {% if web_can_access('/actas') %}
+      <a class="feature-pill" href="/actas"><i class="bi bi-journal-check"></i>Actas</a>
+      {% endif %}
+      {% if web_can_access('/diplomas') %}
+      <a class="feature-pill" href="/diplomas"><i class="bi bi-mortarboard"></i>Diplomas</a>
+      {% endif %}
+      {% if web_can_access('/planillas') %}
+      <a class="feature-pill" href="/planillas"><i class="bi bi-table"></i>Planillas</a>
+      {% endif %}
+      {% if web_can_access('/plan-aula') %}
+      <a class="feature-pill" href="/plan-aula"><i class="bi bi-journal-richtext"></i>Plan de Aula</a>
+      {% endif %}
+      {% if web_can_access('/planeador-clase') %}
+      <a class="feature-pill" href="/planeador-clase"><i class="bi bi-calendar2-week"></i>Planeador de Clase</a>
+      {% endif %}
+      {% if web_can_access('/calendario-academico') %}
+      <a class="feature-pill" href="/calendario-academico"><i class="bi bi-calendar-event"></i>Calendario Académico</a>
+      {% endif %}
+      {% if web_can_access_api('/api/estudiantes/exportar') %}
+      <a class="feature-pill" href="/api/estudiantes/exportar" target="_blank"><i class="bi bi-file-earmark-excel"></i>Exportar Estudiantes</a>
+      {% endif %}
+      {% if web_can_access_api('/api/docentes/exportar') %}
+      <a class="feature-pill" href="/api/docentes/exportar" target="_blank"><i class="bi bi-file-earmark-excel"></i>Exportar Docentes</a>
+      {% endif %}
+      {% if web_can_access_api('/api/estudiantes') %}
+      <a class="feature-pill" href="/api/estudiantes?limit=50" target="_blank"><i class="bi bi-people"></i>API Estudiantes</a>
+      {% endif %}
+      {% if web_can_access_api('/api/docentes') %}
+      <a class="feature-pill" href="/api/docentes?limit=50" target="_blank"><i class="bi bi-person-badge"></i>API Docentes</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function estadoPhaseClass(value) {
+  if (value === 'completada') return 'completada';
+  if (value === 'activa') return 'activa';
+  return 'siguiente';
+}
+
+function itemBadge(item) {
+  if (item.estado === 'migrado') return '<span class="badge bg-success">Migrado</span>';
+  if (item.estado === 'api') return '<span class="badge bg-info text-dark">API</span>';
+  return '<span class="badge bg-secondary">Pendiente</span>';
+}
+
+async function cargarSuperadmin() {
+  const resp = await fetch('/api/superadmin/resumen');
+  const data = await resp.json();
+  if (!data.ok) return;
+
+  const stats = data.stats || {};
+  document.getElementById('kpi-docentes').textContent = stats.docentes ?? '—';
+  document.getElementById('kpi-cargas').textContent = stats.cargas ?? '—';
+  document.getElementById('kpi-estudiantes').textContent = stats.estudiantes ?? '—';
+  document.getElementById('kpi-preguntas').textContent = stats.preguntas ?? '—';
+  document.getElementById('kpi-resultados').textContent = stats.resultados ?? '—';
+  document.getElementById('kpi-examenes').textContent = stats.examenes_generados ?? '—';
+
+  const fases = data.fases || [];
+
+  // Calcular progreso
+  let totalItems = 0, migradosItems = 0;
+  fases.forEach(f => (f.items || []).forEach(i => {
+    totalItems++;
+    if (i.estado === 'migrado' || i.estado === 'api') migradosItems++;
+  }));
+  if (totalItems > 0) {
+    const pct = Math.round(migradosItems / totalItems * 100);
+    document.getElementById('progreso-bar').style.width = pct + '%';
+    document.getElementById('progreso-label').textContent = `${migradosItems} / ${totalItems} (${pct}%)`;
+    document.getElementById('superadmin-progreso').classList.remove('d-none');
+  }
+  const cont = document.getElementById('superadmin-fases');
+  cont.innerHTML = fases.map(fase => `
+    <div class="col-12 col-xl-6">
+      <div class="card phase-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <div>
+              <div class="small text-muted">Fase ${fase.id}</div>
+              <h5 class="mb-1 fw-bold">${fase.titulo}</h5>
+            </div>
+            <span class="phase-state ${estadoPhaseClass(fase.estado)}">
+              <i class="bi ${fase.estado === 'completada' ? 'bi-check2-circle' : fase.estado === 'activa' ? 'bi-check2-circle' : 'bi-hourglass-split'}"></i>
+              ${fase.estado === 'completada' ? '✓ Completada' : fase.estado === 'activa' ? 'En Progreso' : 'Siguiente'}
+            </span>
+          </div>
+          <p class="text-muted small mb-3">${fase.descripcion || ''}</p>
+          <div class="d-flex flex-wrap gap-2">
+            ${(fase.items || []).map(item => item.href
+              ? `<a class="feature-pill" href="${item.href}" ${item.href.startsWith('/api/') ? 'target="_blank"' : ''}>${itemBadge(item)} ${item.label}</a>`
+              : `<span class="feature-pill pending">${itemBadge(item)} ${item.label}</span>`
+            ).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', cargarSuperadmin);
+</script>
+{% endblock %}

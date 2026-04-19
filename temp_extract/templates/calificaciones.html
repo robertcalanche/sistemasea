@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Calificaciones{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-bar-chart-line me-2"></i>Calificaciones
+    </h2>
+    <p class="text-muted mb-0 small">Consulta resultados de evaluaciones y lecturas OMR por cámara</p>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary btn-sm active" id="tabEval" onclick="cambiarTab('eval')">
+      <i class="bi bi-clipboard2-check me-1"></i>Evaluaciones
+    </button>
+    <button class="btn btn-outline-primary btn-sm" id="tabCam" onclick="cambiarTab('cam')">
+      <i class="bi bi-camera me-1"></i>Cámara OMR
+    </button>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold">Grado</label>
+        <select class="form-select form-select-sm" id="filtroGrado">
+          <option value="">— Todos —</option>
+          {% for g in grados %}
+          <option value="{{ g }}">{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">Área</label>
+        <select class="form-select form-select-sm" id="filtroArea">
+          <option value="">— Todas —</option>
+          {% for a in areas %}
+          <option value="{{ a }}">{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">Documento estudiante</label>
+        <input type="text" class="form-control form-control-sm" id="filtroDocumento" placeholder="Nro. documento..." />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold">&nbsp;</label>
+        <button class="btn btn-primary btn-sm w-100" onclick="buscar(0)">
+          <i class="bi bi-search me-1"></i>Buscar
+        </button>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold">&nbsp;</label>
+        <a class="btn btn-success btn-sm w-100" href="/api/calificaciones/resumen" target="_blank">
+          <i class="bi bi-file-earmark-bar-graph me-1"></i>Resumen
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABLA EVALUACIONES -->
+<div class="card" id="tablaEval">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover small mb-0">
+        <thead><tr>
+          <th>Documento</th><th>Estudiante</th><th>Grado</th><th>Área</th>
+          <th>Evaluación</th><th>Nota</th><th>Estado</th><th>Fecha</th>
+        </tr></thead>
+        <tbody id="evalBody">
+          <tr><td colspan="8" class="text-center text-muted py-4">Usa los filtros para buscar calificaciones</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TABLA CÁMARA OMR -->
+<div class="card d-none" id="tablaCam">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover small mb-0">
+        <thead><tr>
+          <th>ID Examen</th><th>Estudiante</th><th>Grado</th><th>Área</th>
+          <th>Correctas</th><th>Total</th><th>Nota</th><th>Fecha</th>
+        </tr></thead>
+        <tbody id="camBody">
+          <tr><td colspan="8" class="text-center text-muted py-4">Usa los filtros para buscar calificaciones OMR</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PAGINACIÓN -->
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <small class="text-muted" id="paginaInfo"></small>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary btn-sm" id="btnAnterior" onclick="paginar(-1)" disabled>
+      <i class="bi bi-chevron-left"></i> Anterior
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" id="btnSiguiente" onclick="paginar(1)" disabled>
+      Siguiente <i class="bi bi-chevron-right"></i>
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let tabActual = 'eval';
+let paginaActual = 0;
+const LIMITE = 100;
+let totalGlobal = 0;
+
+function cambiarTab(tab) {
+  tabActual = tab;
+  paginaActual = 0;
+  document.getElementById('tablaEval').classList.toggle('d-none', tab !== 'eval');
+  document.getElementById('tablaCam').classList.toggle('d-none', tab !== 'cam');
+  document.getElementById('tabEval').classList.toggle('active', tab === 'eval');
+  document.getElementById('tabCam').classList.toggle('active', tab === 'cam');
+  document.getElementById('tabEval').classList.toggle('btn-primary', tab === 'eval');
+  document.getElementById('tabEval').classList.toggle('btn-outline-primary', tab !== 'eval');
+  document.getElementById('tabCam').classList.toggle('active', tab === 'cam');
+  document.getElementById('tabCam').classList.toggle('btn-primary', tab === 'cam');
+  document.getElementById('tabCam').classList.toggle('btn-outline-primary', tab !== 'cam');
+}
+
+function notaBadge(nota) {
+  const n = parseFloat(nota);
+  if (isNaN(n)) return `<span class="badge bg-secondary">—</span>`;
+  const cls = n >= 60 ? 'bg-success' : n >= 40 ? 'bg-warning text-dark' : 'bg-danger';
+  return `<span class="badge ${cls}">${n}</span>`;
+}
+
+async function buscar(offset) {
+  paginaActual = offset;
+  const grado = document.getElementById('filtroGrado').value;
+  const area = document.getElementById('filtroArea').value;
+  const documento = document.getElementById('filtroDocumento').value.trim();
+
+  const params = new URLSearchParams({ limit: LIMITE, offset });
+  if (grado) params.append('grado', grado);
+  if (area) params.append('area', area);
+  if (documento) params.append('documento', documento);
+
+  const endpoint = tabActual === 'eval' ? '/api/calificaciones' : '/api/calificaciones/camara';
+  const bodyId = tabActual === 'eval' ? 'evalBody' : 'camBody';
+  const cols = tabActual === 'eval' ? 8 : 8;
+  const tbody = document.getElementById(bodyId);
+
+  tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div> Cargando...</td></tr>`;
+
+  try {
+    const resp = await fetch(`${endpoint}?${params}`);
+    const data = await resp.json();
+    totalGlobal = data.total || 0;
+
+    document.getElementById('paginaInfo').textContent =
+      `Mostrando ${Math.min(offset + 1, totalGlobal)}–${Math.min(offset + LIMITE, totalGlobal)} de ${totalGlobal}`;
+    document.getElementById('btnAnterior').disabled = offset <= 0;
+    document.getElementById('btnSiguiente').disabled = (offset + LIMITE) >= totalGlobal;
+
+    const lista = tabActual === 'eval' ? data.calificaciones : data.calificaciones;
+
+    if (!lista || !lista.length) {
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted py-4">Sin resultados</td></tr>`;
+      return;
+    }
+
+    if (tabActual === 'eval') {
+      tbody.innerHTML = lista.map(r => `
+        <tr>
+          <td><small>${r.documento}</small></td>
+          <td>${r.nombre}</td>
+          <td><span class="badge bg-secondary">${r.grado || ''}</span></td>
+          <td><small>${r.area || ''}</small></td>
+          <td><small class="text-muted">${r.evaluacion || ''}</small></td>
+          <td>${notaBadge(r.nota)}</td>
+          <td><span class="badge ${r.estado_examen === 'FINALIZADO' ? 'bg-success' : 'bg-warning text-dark'}">${r.estado_examen || ''}</span></td>
+          <td><small class="text-muted">${(r.hora_inicio || '').substring(0,16)}</small></td>
+        </tr>
+      `).join('');
+    } else {
+      tbody.innerHTML = lista.map(r => `
+        <tr>
+          <td><code>${r.id_examen}</code></td>
+          <td>${r.estudiante_nombre || ''}</td>
+          <td><span class="badge bg-secondary">${r.grado || ''}</span></td>
+          <td><small>${r.area || ''}</small></td>
+          <td class="text-success fw-bold">${r.correctas}</td>
+          <td>${r.total_preguntas}</td>
+          <td>${notaBadge(r.nota)}</td>
+          <td><small class="text-muted">${(r.fecha_registro || '').substring(0,16)}</small></td>
+        </tr>
+      `).join('');
+    }
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-danger py-4">Error al cargar datos</td></tr>`;
+  }
+}
+
+function paginar(dir) {
+  buscar(Math.max(0, paginaActual + (dir * LIMITE)));
+}
+</script>
+{% endblock %}

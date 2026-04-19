@@ -1,0 +1,10 @@
+[
+  {"label": "Número de Acta:", "key": "numero_acta", "type": "entry"},
+  {"label": "Fecha de Grado:", "key": "fecha_grado", "type": "entry"},
+  {"label": "Nombre del Rector:", "key": "nombre_rector", "type": "entry"},
+  {"label": "Nombre del Secretario:", "key": "nombre_secretario", "type": "entry"},
+  {"label": "Libro:", "key": "libro", "type": "entry"},
+  {"label": "Folio:", "key": "folio", "type": "entry"},
+  {"label": "Registro:", "key": "registro", "type": "entry"},
+  {"label": "Observaciones:", "key": "observaciones", "type": "text"}
+]

@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+{% block title %}Autoevaluación{% endblock %}
+
+{% block extra_head %}
+<style>
+  .autoeval-hero {
+    background:
+      radial-gradient(circle at top right, rgba(15, 93, 184, .14), transparent 28%),
+      linear-gradient(135deg, #f9fbff 0%, #eef5ff 55%, #ffffff 100%);
+    border: 1px solid rgba(15, 93, 184, .12);
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 18px 34px rgba(22, 50, 79, .08);
+  }
+  .autoeval-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .85rem;
+    border-radius: 999px;
+    background: rgba(15, 93, 184, .08);
+    color: #0f5db8;
+    font-size: .88rem;
+    font-weight: 700;
+  }
+  .instrument-card {
+    border: 1px solid #dbe7f5;
+    border-radius: 18px;
+    background: #fff;
+    padding: 1rem;
+    height: 100%;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .instrument-card.clickable { cursor: pointer; }
+  .instrument-card.clickable:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(22, 50, 79, .10); }
+  .answer-scale label { cursor: pointer; }
+  .dimension-block {
+    border: 1px solid #e6edf6;
+    border-radius: 16px;
+    background: #fff;
+    padding: 1rem;
+  }
+  .question-row + .question-row { border-top: 1px dashed #e2e8f0; padding-top: 1rem; margin-top: 1rem; }
+  .history-card {
+    border: 1px solid #e6edf6;
+    border-radius: 16px;
+    background: #fff;
+    padding: 1rem;
+  }
+  .empty-state {
+    border: 1px dashed #cad8e8;
+    border-radius: 16px;
+    padding: 1.25rem;
+    background: #f9fbfe;
+    color: #5f7287;
+    text-align: center;
+  }
+  .result-kpi {
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 12px 24px rgba(22, 50, 79, .08);
+    height: 100%;
+  }
+  .result-kpi .value { font-size: 2rem; font-weight: 800; color: #16324f; line-height: 1; }
+  .result-kpi .label { color: #5f7287; font-size: .84rem; text-transform: uppercase; letter-spacing: .05em; }
+  @media (max-width: 767px) {
+    .autoeval-hero { padding: 1.15rem; border-radius: 18px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="autoeval-hero mb-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+      <div>
+        <div class="autoeval-chip mb-3"><i class="bi bi-journal-check"></i> Autoevaluación web del estudiante</div>
+        <h1 class="h2 fw-bold mb-1" style="color:#16324f;">{{ web_user.nombre or 'Estudiante' }}</h1>
+        <p class="text-muted mb-0">Responde tu autoevaluación socioacadémica según los instrumentos habilitados para tu grado y curso.</p>
+      </div>
+      <div class="text-end small text-muted">
+        <div><strong>Documento:</strong> {{ web_user.documento or '—' }}</div>
+        <div><strong>Grado:</strong> {{ web_user.grado or '—' }}</div>
+        <div><strong>Curso:</strong> {{ web_user.curso or '—' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="autoevalAlert"></div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card result-kpi bg-white">
+        <div class="card-body">
+          <div class="label mb-2">Instrumentos</div>
+          <div class="value" id="aeTotal">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card result-kpi bg-white">
+        <div class="card-body">
+          <div class="label mb-2">Pendientes</div>
+          <div class="value" id="aePendientes">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card result-kpi bg-white">
+        <div class="card-body">
+          <div class="label mb-2">Respondidas</div>
+          <div class="value" id="aeRespondidas">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card result-kpi bg-white">
+        <div class="card-body">
+          <div class="label mb-2">Promedio</div>
+          <div class="value" id="aePromedio">0.0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-xl-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <strong>Instrumentos habilitados</strong>
+            <div class="small text-muted">Solo puedes responder una vez cada instrumento.</div>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="cargarAutoevaluacion()">
+            <i class="bi bi-arrow-repeat me-1"></i>Actualizar
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="row g-3" id="instrumentosList">
+            <div class="col-12 text-muted">Cargando instrumentos...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white">
+          <strong id="instrumentoTitle">Selecciona un instrumento</strong>
+          <div class="small text-muted" id="instrumentoMeta">Al elegir un instrumento se cargará el formulario de respuesta.</div>
+        </div>
+        <div class="card-body" id="instrumentoBody">
+          <div class="empty-state">No hay ningún instrumento seleccionado.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white">
+      <strong>Mi historial de autoevaluación</strong>
+      <div class="small text-muted">Resumen de instrumentos ya respondidos.</div>
+    </div>
+    <div class="card-body" id="historialAutoevaluacion">
+      <div class="empty-state">Cargando historial...</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const escalaAutoevaluacion = {{ escala | tojson }};
+const autoevalState = {
+  instrumentos: [],
+  historial: [],
+  instrumentoActual: null,
+};
+
+function aeAlert(message, level = 'warning') {
+  document.getElementById('autoevalAlert').innerHTML = `
+    <div class="alert alert-${level} alert-dismissible fade show" role="alert">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+}
+
+function limpiarAlertaAE() {
+  document.getElementById('autoevalAlert').innerHTML = '';
+}
+
+async function aeFetch(url, options = {}) {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'request_failed');
+  }
+  return data;
+}
+
+function colorNotaAE(nota) {
+  if (nota >= 4.5) return '#16a34a';
+  if (nota >= 4.0) return '#0ea5e9';
+  if (nota >= 3.0) return '#f59e0b';
+  return '#dc2626';
+}
+
+function actualizarResumenAE() {
+  const instrumentos = autoevalState.instrumentos || [];
+  const historial = autoevalState.historial || [];
+  const respondidas = instrumentos.filter(item => item.respondida).length;
+  const pendientes = instrumentos.length - respondidas;
+  const notas = historial.map(item => Number(item.nota || 0)).filter(item => !Number.isNaN(item));
+  const promedio = notas.length ? notas.reduce((acc, item) => acc + item, 0) / notas.length : 0;
+
+  document.getElementById('aeTotal').textContent = String(instrumentos.length);
+  document.getElementById('aePendientes').textContent = String(Math.max(pendientes, 0));
+  document.getElementById('aeRespondidas').textContent = String(respondidas);
+  document.getElementById('aePromedio').textContent = promedio.toFixed(1);
+  document.getElementById('aePromedio').style.color = colorNotaAE(promedio);
+}
+
+function renderInstrumentos() {
+  const target = document.getElementById('instrumentosList');
+  const instrumentos = autoevalState.instrumentos || [];
+
+  if (!instrumentos.length) {
+    target.innerHTML = '<div class="col-12"><div class="empty-state">No hay autoevaluaciones habilitadas para tu grupo.</div></div>';
+    return;
+  }
+
+  target.innerHTML = instrumentos.map((item) => `
+    <div class="col-12">
+      <div class="instrument-card clickable" onclick="abrirInstrumento(${Number(item.id)})">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+          <div>
+            <div class="fw-bold" style="color:#16324f;">${item.area || 'Área'}</div>
+            <div class="small text-muted">Periodo ${item.periodo || '—'} · ${item.total_preguntas || 0} preguntas</div>
+          </div>
+          <span class="badge ${item.respondida ? 'text-bg-success' : 'text-bg-warning'}">${item.respondida ? 'Respondida' : 'Pendiente'}</span>
+        </div>
+        <div class="small text-muted">Docente: ${item.docente_nombre || item.docente || 'No registrado'} · Curso ${item.curso || '—'}</div>
+        ${item.respuesta ? `<div class="mt-2 small">Nota: <strong style="color:${colorNotaAE(Number(item.respuesta.nota || 0))}">${Number(item.respuesta.nota || 0).toFixed(2)}</strong> · Nivel: ${item.respuesta.nivel || '—'}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function renderHistorialAE() {
+  const target = document.getElementById('historialAutoevaluacion');
+  const historial = autoevalState.historial || [];
+  if (!historial.length) {
+    target.innerHTML = '<div class="empty-state">Aún no has respondido autoevaluaciones.</div>';
+    return;
+  }
+
+  const rows = historial.map((item) => `
+    <tr>
+      <td class="fw-semibold">${item.area || '—'}</td>
+      <td>${item.periodo || '—'}</td>
+      <td>${item.preguntas || 0}</td>
+      <td><span style="color:${colorNotaAE(Number(item.nota || 0))}; font-weight:700;">${Number(item.nota || 0).toFixed(2)}</span></td>
+      <td>${item.nivel || '—'}</td>
+      <td>${String(item.fecha || '').replace('T', ' ').slice(0, 16) || '—'}</td>
+    </tr>`).join('');
+
+  target.innerHTML = `
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Área</th>
+            <th>Periodo</th>
+            <th>Preguntas</th>
+            <th>Nota</th>
+            <th>Nivel</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+async function cargarAutoevaluacion() {
+  limpiarAlertaAE();
+  try {
+    const data = await aeFetch('/api/autoevaluacion/activas');
+    autoevalState.instrumentos = data.instrumentos || [];
+    autoevalState.historial = data.historial || [];
+    actualizarResumenAE();
+    renderInstrumentos();
+    renderHistorialAE();
+    if (!autoevalState.instrumentos.length) {
+      document.getElementById('instrumentoBody').innerHTML = '<div class="empty-state">No hay instrumentos disponibles.</div>';
+    }
+  } catch (error) {
+    aeAlert(error.message || 'No fue posible cargar la autoevaluación.', 'danger');
+  }
+}
+
+function agruparPreguntas(preguntas) {
+  const grupos = {};
+  (preguntas || []).forEach((pregunta, index) => {
+    const dimension = String(pregunta.dimension || 'Sin dimensión').trim() || 'Sin dimensión';
+    grupos[dimension] = grupos[dimension] || [];
+    grupos[dimension].push({ ...pregunta, _index: index });
+  });
+  return grupos;
+}
+
+async function abrirInstrumento(instrumentoId) {
+  limpiarAlertaAE();
+  try {
+    const data = await aeFetch(`/api/autoevaluacion/${instrumentoId}`);
+    autoevalState.instrumentoActual = data.instrumento || null;
+    renderInstrumentoActual();
+  } catch (error) {
+    aeAlert(error.message || 'No fue posible cargar el instrumento.', 'danger');
+  }
+}
+
+function renderInstrumentoActual() {
+  const instrumento = autoevalState.instrumentoActual;
+  const title = document.getElementById('instrumentoTitle');
+  const meta = document.getElementById('instrumentoMeta');
+  const body = document.getElementById('instrumentoBody');
+
+  if (!instrumento) {
+    title.textContent = 'Selecciona un instrumento';
+    meta.textContent = 'Al elegir un instrumento se cargará el formulario de respuesta.';
+    body.innerHTML = '<div class="empty-state">No hay ningún instrumento seleccionado.</div>';
+    return;
+  }
+
+  title.textContent = `${instrumento.area || 'Área'} · Periodo ${instrumento.periodo || '—'}`;
+  meta.textContent = `Docente: ${instrumento.docente_nombre || instrumento.docente || 'No registrado'} · Curso ${instrumento.curso || '—'}`;
+
+  if (instrumento.respondida && instrumento.respuesta) {
+    const respuesta = instrumento.respuesta;
+    body.innerHTML = `
+      <div class="history-card">
+        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+          <div>
+            <h3 class="h6 mb-1">Autoevaluación ya respondida</h3>
+            <div class="small text-muted">No puedes reenviar este instrumento.</div>
+          </div>
+          <span class="badge text-bg-success">Respondida</span>
+        </div>
+        <div class="row g-3 mt-2">
+          <div class="col-6 col-md-3"><strong>Puntaje:</strong><br>${respuesta.puntaje_total || 0}/${respuesta.puntaje_maximo || 0}</div>
+          <div class="col-6 col-md-3"><strong>Nota:</strong><br><span style="color:${colorNotaAE(Number(respuesta.nota || 0))}; font-weight:700;">${Number(respuesta.nota || 0).toFixed(2)}</span></div>
+          <div class="col-6 col-md-3"><strong>Nivel:</strong><br>${respuesta.nivel || '—'}</div>
+          <div class="col-6 col-md-3"><strong>Fecha:</strong><br>${String(respuesta.fecha || '').replace('T', ' ').slice(0, 16) || '—'}</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const grupos = agruparPreguntas(instrumento.preguntas || []);
+  const bloques = Object.entries(grupos).map(([dimension, preguntas]) => `
+    <div class="dimension-block mb-3">
+      <h3 class="h6 fw-bold mb-3">${dimension}</h3>
+      ${preguntas.map((pregunta) => `
+        <div class="question-row">
+          <div class="fw-semibold mb-2">${pregunta._index + 1}. ${pregunta.texto || ''}</div>
+          <div class="answer-scale d-flex flex-wrap gap-3">
+            ${escalaAutoevaluacion.map((item) => `
+              <label class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="radio" name="pregunta_${pregunta._index}" value="${item[0]}">
+                <span class="form-check-label">${item[0]} ${item[1]}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>`).join('');
+
+  body.innerHTML = `
+    <form id="autoevalForm">
+      ${bloques}
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <button type="button" class="btn btn-outline-secondary" onclick="renderInstrumentoActual()">Limpiar</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-send-check me-1"></i>Enviar autoevaluación</button>
+      </div>
+    </form>`;
+
+  document.getElementById('autoevalForm').addEventListener('submit', enviarAutoevaluacion);
+}
+
+async function enviarAutoevaluacion(event) {
+  event.preventDefault();
+  const instrumento = autoevalState.instrumentoActual;
+  if (!instrumento) {
+    aeAlert('No hay un instrumento seleccionado.', 'warning');
+    return;
+  }
+
+  const respuestas = (instrumento.preguntas || []).map((_, index) => {
+    const selected = document.querySelector(`input[name="pregunta_${index}"]:checked`);
+    return selected ? Number(selected.value) : 0;
+  });
+
+  if (!respuestas.length || respuestas.some((valor) => ![1, 2, 3, 4].includes(valor))) {
+    aeAlert('Debes responder todas las preguntas con una opción de 1 a 4.', 'danger');
+    return;
+  }
+
+  try {
+    const data = await aeFetch(`/api/autoevaluacion/${instrumento.id}/responder`, {
+      method: 'POST',
+      body: JSON.stringify({ respuestas }),
+    });
+    aeAlert(`Autoevaluación enviada. Nota final: ${Number(data.nota || 0).toFixed(2)} · Nivel: ${data.nivel || '—'}`, 'success');
+    await cargarAutoevaluacion();
+    await abrirInstrumento(instrumento.id);
+  } catch (error) {
+    aeAlert(error.message || 'No fue posible enviar la autoevaluación.', 'danger');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  cargarAutoevaluacion();
+});
+</script>
+{% endblock %}

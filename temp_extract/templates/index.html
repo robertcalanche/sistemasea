@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+{% if web_role_is('estudiante') %}
+<!-- ===== PORTAL ESTUDIANTE ===== -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-person-vcard me-2"></i>Portal del Estudiante
+    </h2>
+    <p class="text-muted mb-0 small">Bienvenido, {{ web_user.get('nombre', '') }}</p>
+  </div>
+  <a href="/salir" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-box-arrow-right me-1"></i>Salir
+  </a>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Perfil -->
+  <div class="col-12 col-md-5">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-person-circle me-2"></i>Mi Perfil</div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-6">
+            <div class="small text-muted">Nombre</div>
+            <div class="fw-semibold">{{ web_user.get('nombre', '') }}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">Documento</div>
+            <div class="fw-semibold">{{ web_user.get('documento', '') }}</div>
+          </div>
+          <div class="col-6 mt-2">
+            <div class="small text-muted">Grado</div>
+            <div class="fw-semibold">{{ web_user.get('grado', '') or 'Sin registrar' }}</div>
+          </div>
+          <div class="col-6 mt-2">
+            <div class="small text-muted">Curso</div>
+            <div class="fw-semibold">{{ web_user.get('curso', '') or 'Sin registrar' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Acceso rápido al examen -->
+  <div class="col-12 col-md-7">
+    <div class="card h-100" style="border-left: 5px solid var(--sea-secondary);">
+      <div class="card-header" style="background: var(--sea-secondary);"><i class="bi bi-pencil-square me-2"></i>Mis Evaluaciones</div>
+      <div class="card-body d-flex flex-column">
+        <p class="mb-3">Presenta tus evaluaciones en línea. Tu progreso se guarda automáticamente y puedes reanudar donde lo dejaste.</p>
+        <div class="d-flex gap-2 flex-wrap mt-auto">
+          <a href="/examen" class="btn btn-primary">
+            <i class="bi bi-play-circle me-2"></i>Ir a mis evaluaciones
+          </a>
+          <a href="/examen" class="btn btn-outline-secondary"
+             onclick="localStorage.setItem('sea_show_historial','1')">
+            <i class="bi bi-clock-history me-1"></i>Ver historial
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+{% set dashboard_title = 'Portal Docente' if web_role_is('docente') else 'Portal Secretaría' if web_role_is('secretaria') else 'Portal de Gestión' if web_role_is('rector', 'coordinador', 'admin') else 'Dashboard' %}
+{% set dashboard_subtitle = 'Configura evaluaciones, consulta resultados y opera tus módulos académicos.' if web_role_is('docente') else 'Gestiona certificados, matrícula y soporte documental institucional.' if web_role_is('secretaria') else 'Supervisa la operación académica y los módulos administrativos habilitados.' if web_role_is('rector', 'coordinador', 'admin') else 'Sistema de Evaluación Automatizada — Vista general' %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-speedometer2 me-2"></i>{{ dashboard_title }}
+    </h2>
+    <p class="text-muted mb-0 small">{{ dashboard_subtitle }}</p>
+  </div>
+  <span class="badge bg-success fs-6"><i class="bi bi-wifi me-1"></i>Servidor activo</span>
+</div>
+
+<!-- TARJETAS DE ESTADÍSTICAS -->
+{% set show_stats = web_can_access_api('/api/estudiantes') or web_can_access_api('/api/banco-preguntas') or web_can_access_api('/api/calificaciones') or web_can_access_api('/api/calificaciones/camara') %}
+{% if show_stats %}
+<div class="row g-3 mb-4" id="statsContainer">
+  {% if web_can_access_api('/api/estudiantes') %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-people me-1"></i>Estudiantes</div>
+      <div class="display-6" id="stat-estudiantes">—</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if web_can_access_api('/api/banco-preguntas') %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-question-circle me-1"></i>Preguntas</div>
+      <div class="display-6" id="stat-preguntas">—</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if web_can_access_api('/api/calificaciones') %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-clipboard2-check me-1"></i>Calificaciones</div>
+      <div class="display-6" id="stat-calificaciones">—</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if web_can_access_api('/api/calificaciones/camara') %}
+  <div class="col-6 col-md-3">
+    <div class="card stat-card h-100 p-3">
+      <div class="text-muted small mb-1"><i class="bi bi-camera me-1"></i>Lecturas OMR</div>
+      <div class="display-6" id="stat-omr">—</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+
+<!-- AVANCE DE MIGRACIÓN -->
+<div class="mb-4">
+  <div class="d-flex align-items-center mb-1">
+    {% set avance_migracion_pct = (avance_migracion or 0)|int %}
+    {% set avance_migracion_pct_str = avance_migracion_pct|string + '%' %}
+    <span class="fw-semibold me-2">Migración completada: {{ avance_migracion_pct }}</span>
+    <div class="progress flex-grow-1" style="height: 18px;">
+      <div class="progress-bar bg-success" role="progressbar" style="width: {{ avance_migracion_pct_str }};" aria-valuenow="{{ avance_migracion_pct }}" aria-valuemin="0" aria-valuemax="100">{{ avance_migracion_pct_str }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- TARJETAS DE MÓDULOS -->
+<div class="row g-3 mb-4">
+  {% for modulo in modulos %}
+  <div class="col-md-6 col-lg-3">
+    {% set estado = modulo.estado_info %}
+    {% if modulo.estado == 'pendiente' %}
+      <div class="card h-100 text-center p-4 bg-light position-relative" style="opacity:0.7; cursor:not-allowed;">
+        <i class="fa {{ modulo.icono }} display-4 mb-3 text-secondary"></i>
+        <h5 class="fw-semibold">{{ modulo.nombre }}</h5>
+        <span class="badge bg-{{ estado.color }} mb-2"><i class="fa {{ estado.icon }} me-1"></i>{{ estado.texto }}</span>
+        <p class="text-muted small">Próximamente</p>
+        <div class="position-absolute top-0 end-0 m-2"><i class="fa fa-lock text-secondary"></i></div>
+      </div>
+    {% else %}
+      <a href="{{ modulo.ruta }}" class="text-decoration-none" {% if modulo.estado == 'parcial' %}onclick="alert('Módulo en desarrollo. Algunas funciones pueden estar incompletas.');"{% endif %}>
+        <div class="card h-100 text-center p-4 position-relative">
+          <i class="fa {{ modulo.icono }} display-4 mb-3 text-{{ estado.color }}"></i>
+          <h5 class="fw-semibold">{{ modulo.nombre }}</h5>
+          <span class="badge bg-{{ estado.color }} mb-2"><i class="fa {{ estado.icon }} me-1"></i>{{ estado.texto }}</span>
+          {% if modulo.estado == 'parcial' %}
+            <div class="position-absolute top-0 end-0 m-2"><i class="fa fa-tools text-warning"></i></div>
+          {% endif %}
+        </div>
+      </a>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% if web_can_access_api('/api/calificaciones/resumen') %}
+<!-- RESUMEN DE CALIFICACIONES -->
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Resumen de Calificaciones por Área</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 small" id="resumenTable">
+        <thead><tr>
+          <th>Grado</th><th>Área</th><th>Total</th>
+          <th>Promedio</th><th>Mínima</th><th>Máxima</th>
+        </tr></thead>
+        <tbody id="resumenBody">
+          <tr><td colspan="6" class="text-center text-muted py-3">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- INFO DE RED -->
+<div class="card">
+  <div class="card-header"><i class="bi bi-wifi me-2"></i>Acceso en Red Local</div>
+  <div class="card-body">
+    <p class="mb-2 small">Para acceder desde otros dispositivos en la red, usa la IP local del servidor:</p>
+    <div class="d-flex gap-2 flex-wrap">
+      <code class="bg-light p-2 rounded" id="urlLocal">http://localhost:5000</code>
+      <code class="bg-light p-2 rounded" id="urlRed">Detectando IP...</code>
+    </div>
+    <p class="text-muted small mt-2 mb-0">
+      <i class="bi bi-phone me-1"></i>
+      Abre la URL en el navegador del celular para usar el escáner OMR con la cámara.
+    </p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if not web_role_is('estudiante') %}
+<script>
+async function cargarStats() {
+  const requests = [];
+  const est = document.getElementById('stat-estudiantes');
+  const preg = document.getElementById('stat-preguntas');
+  const cal = document.getElementById('stat-calificaciones');
+  const omr = document.getElementById('stat-omr');
+
+  if (est) requests.push(fetch('/api/estudiantes?limit=1').then(r => r.json()).then(data => { est.textContent = data.total ?? '—'; }));
+  if (preg) requests.push(fetch('/api/banco-preguntas?limit=1').then(r => r.json()).then(data => { preg.textContent = data.total ?? '—'; }));
+  if (cal) requests.push(fetch('/api/calificaciones?limit=1').then(r => r.json()).then(data => { cal.textContent = data.total ?? '—'; }));
+  if (omr) requests.push(fetch('/api/calificaciones/camara?limit=1').then(r => r.json()).then(data => { omr.textContent = data.total ?? '—'; }));
+
+  try {
+    await Promise.all(requests);
+  } catch(e) {}
+}
+
+async function cargarResumen() {
+  const tbody = document.getElementById('resumenBody');
+  if (!tbody) return;
+  try {
+    const resp = await fetch('/api/calificaciones/resumen');
+    const data = await resp.json();
+    if (!data.ok || !data.resumen.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Sin datos disponibles</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.resumen.map(r => `
+      <tr>
+        <td>${r.grado ?? ''}</td>
+        <td>${r.area ?? ''}</td>
+        <td><span class="badge bg-secondary">${r.total}</span></td>
+        <td><strong>${r.promedio}</strong></td>
+        <td class="text-danger">${r.minima}</td>
+        <td class="text-success">${r.maxima}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    document.getElementById('resumenBody').innerHTML =
+      '<tr><td colspan="6" class="text-center text-danger py-3">Error al cargar datos</td></tr>';
+  }
+}
+
+async function detectarIP() {
+  try {
+    const resp = await fetch('/api/health');
+    const data = await resp.json();
+    // La IP real se obtiene del host usado para conectarse
+    const url = new URL(window.location.href);
+    document.getElementById('urlRed').textContent = `http://${url.hostname}:5000`;
+  } catch(e) {}
+}
+
+if (document.getElementById('statsContainer')) cargarStats();
+if (document.getElementById('resumenBody')) cargarResumen();
+detectarIP();
+</script>
+{% endif %}
+{% endblock %}

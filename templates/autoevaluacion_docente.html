@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+{% block title %}Autoevaluación Docente{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ae-doc-hero {
+    background:
+      radial-gradient(circle at top right, rgba(15, 93, 184, .14), transparent 28%),
+      linear-gradient(135deg, #f8fbff 0%, #eef5ff 55%, #ffffff 100%);
+    border: 1px solid rgba(15, 93, 184, .12);
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 18px 34px rgba(22, 50, 79, .08);
+  }
+  .ae-doc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .85rem;
+    border-radius: 999px;
+    background: rgba(15, 93, 184, .08);
+    color: #0f5db8;
+    font-size: .88rem;
+    font-weight: 700;
+  }
+  .ae-card { border: 1px solid #e4ebf5; border-radius: 18px; background: #fff; }
+  .ae-card .card-header { background: #fff; border-bottom: 1px solid #eef2f7; }
+  .question-item { border: 1px solid #e6edf6; border-radius: 14px; padding: .85rem 1rem; background: #fff; }
+  .question-item + .question-item { margin-top: .75rem; }
+  .question-item.is-selected { border-color: #0f5db8; box-shadow: 0 0 0 3px rgba(15, 93, 184, .12); }
+  .dimension-badge { font-size: .78rem; }
+  .empty-state { border: 1px dashed #cad8e8; border-radius: 16px; padding: 1.25rem; text-align: center; background: #f9fbfe; color: #5f7287; }
+  .kpi-card { border: 0; border-radius: 18px; box-shadow: 0 12px 24px rgba(22, 50, 79, .08); }
+  .kpi-card .value { font-size: 1.9rem; font-weight: 800; color: #16324f; line-height: 1; }
+  .kpi-card .label { color: #5f7287; font-size: .84rem; text-transform: uppercase; letter-spacing: .05em; }
+  .result-pill { border-radius: 999px; padding: .3rem .7rem; font-size: .76rem; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="ae-doc-hero mb-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+      <div>
+        <div class="ae-doc-chip mb-3"><i class="bi bi-journal-check"></i> Autoevaluación docente web</div>
+        <h1 class="h2 fw-bold mb-1" style="color:#16324f;">{{ web_user.nombre or 'Docente' }}</h1>
+        <p class="text-muted mb-0">Crea instrumentos, habilítalos para tus grupos y consulta resultados sin salir del navegador.</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        {% if web_can_access('/docente') %}
+        <a href="/docente" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver al panel docente</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div id="aeDocAlert"></div>
+
+  {% if proxy_mode %}
+  <div class="card ae-card mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-7">
+          <label class="form-label small fw-semibold">Docente a administrar</label>
+          <select class="form-select" id="proxyDocenteSelect">
+            <option value="">Seleccione un docente</option>
+          </select>
+        </div>
+        <div class="col-lg-5">
+          <div class="small text-muted mb-1">Modo administrador</div>
+          <div class="fw-semibold" id="proxyDocenteInfo">Selecciona un docente para cargar instrumentos y resultados.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="card kpi-card h-100"><div class="card-body"><div class="label mb-2">Instrumentos</div><div class="value" id="kpiInstrumentos">0</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card kpi-card h-100"><div class="card-body"><div class="label mb-2">Habilitados</div><div class="value" id="kpiHabilitados">0</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card kpi-card h-100"><div class="card-body"><div class="label mb-2">Resultados</div><div class="value" id="kpiResultados">0</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card kpi-card h-100"><div class="card-body"><div class="label mb-2">Promedio</div><div class="value" id="kpiPromedio">0.0</div></div></div></div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-5">
+      <div class="card ae-card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <strong>Configuración del instrumento</strong>
+            <div class="small text-muted">Constructor web alineado con la versión de escritorio.</div>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="nuevoInstrumento()">
+            <i class="bi bi-plus-circle me-1"></i>Nuevo
+          </button>
+        </div>
+        <div class="card-body">
+          <form id="instrumentoForm" class="row g-3">
+            <input type="hidden" id="instrumentoId" />
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Área</label>
+              <select class="form-select" id="formArea"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Grado</label>
+              <select class="form-select" id="formGrado"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Curso</label>
+              <select class="form-select" id="formCurso"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Periodo</label>
+              <select class="form-select" id="formPeriodo">
+                <option value="Periodo 1">Periodo 1</option>
+                <option value="Periodo 2">Periodo 2</option>
+                <option value="Periodo 3">Periodo 3</option>
+                <option value="Periodo 4">Periodo 4</option>
+              </select>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="formHabilitada">
+                <label class="form-check-label" for="formHabilitada">Habilitar al guardar</label>
+              </div>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label small fw-semibold">Dimensión</label>
+              <select class="form-select" id="formDimension">
+                {% for dimension in dimensiones %}
+                <option value="{{ dimension }}">{{ dimension }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-7">
+              <label class="form-label small fw-semibold">Pregunta</label>
+              <textarea class="form-control" id="formPregunta" rows="3" placeholder="Redacta la pregunta del instrumento"></textarea>
+            </div>
+            <div class="col-12 d-flex gap-2 flex-wrap">
+              <button class="btn btn-outline-primary btn-sm" type="button" onclick="agregarPregunta()"><i class="bi bi-plus-lg me-1"></i>Agregar</button>
+              <button class="btn btn-outline-secondary btn-sm" type="button" onclick="actualizarPreguntaSeleccionada()"><i class="bi bi-pencil-square me-1"></i>Actualizar seleccionada</button>
+              <button class="btn btn-outline-danger btn-sm" type="button" onclick="eliminarPreguntaSeleccionada()"><i class="bi bi-trash me-1"></i>Eliminar seleccionada</button>
+              <button class="btn btn-outline-secondary btn-sm" type="button" onclick="cargarFormatoBase()"><i class="bi bi-file-earmark-text me-1"></i>Formato base</button>
+            </div>
+            <div class="col-12">
+              <div id="preguntasList" class="empty-state">No hay preguntas cargadas.</div>
+            </div>
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button class="btn btn-outline-secondary" type="button" onclick="nuevoInstrumento()">Limpiar</button>
+              <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>Guardar instrumento</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-7">
+      <div class="card ae-card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <strong>Instrumentos creados</strong>
+            <div class="small text-muted">Carga, habilita y edita instrumentos de autoevaluación.</div>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="cargarResumenDocente()"><i class="bi bi-arrow-repeat me-1"></i>Actualizar</button>
+        </div>
+        <div class="card-body" id="instrumentosBody">
+          <div class="empty-state">Cargando instrumentos...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card ae-card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <strong>Resultados de autoevaluación</strong>
+        <div class="small text-muted">Consulta rápida y detalle por estudiante.</div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <select class="form-select form-select-sm" id="filtroArea" style="min-width:150px"></select>
+        <select class="form-select form-select-sm" id="filtroGrado" style="min-width:120px"></select>
+        <select class="form-select form-select-sm" id="filtroCurso" style="min-width:120px"></select>
+        <select class="form-select form-select-sm" id="filtroPeriodo" style="min-width:140px"></select>
+        <button class="btn btn-primary btn-sm" type="button" onclick="cargarResultadosDocente()"><i class="bi bi-search me-1"></i>Consultar</button>
+        <button class="btn btn-outline-success btn-sm" type="button" onclick="exportarResultadosDocente()"><i class="bi bi-file-earmark-excel me-1"></i>Exportar</button>
+      </div>
+    </div>
+    <div class="card-body" id="resultadosBody">
+      <div class="empty-state">Cargando resultados...</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="detalleResultadoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Detalle de autoevaluación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detalleResultadoBody">
+        <div class="text-muted">Cargando...</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const aeDocState = {
+  fuentes: { areas: [], grados: [], cursos_por_grado: {}, formato_base: [] },
+  instrumentos: [],
+  preguntas: [],
+  selectedPreguntaIndex: null,
+  resultados: [],
+  resumen: null,
+  proxyMode: {{ 'true' if proxy_mode else 'false' }},
+  docenteDocumento: '',
+  docenteNombre: '',
+  docentes: [],
+};
+
+function aeDocAlert(message, level = 'warning') {
+  document.getElementById('aeDocAlert').innerHTML = `
+    <div class="alert alert-${level} alert-dismissible fade show" role="alert">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+}
+
+function clearAeDocAlert() {
+  document.getElementById('aeDocAlert').innerHTML = '';
+}
+
+async function aeDocFetch(url, options = {}) {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'request_failed');
+  }
+  return data;
+}
+
+function buildProxyParams() {
+  const params = new URLSearchParams();
+  if (aeDocState.proxyMode && aeDocState.docenteDocumento) {
+    params.set('docente_documento', aeDocState.docenteDocumento);
+  }
+  return params;
+}
+
+function withProxyUrl(baseUrl, extraParams = null) {
+  const params = buildProxyParams();
+  if (extraParams) {
+    for (const [key, value] of extraParams.entries()) {
+      params.set(key, value);
+    }
+  }
+  return `${baseUrl}${params.toString() ? `?${params.toString()}` : ''}`;
+}
+
+function attachProxyPayload(payload = {}) {
+  if (aeDocState.proxyMode && aeDocState.docenteDocumento) {
+    return { ...payload, docente_documento: aeDocState.docenteDocumento };
+  }
+  return payload;
+}
+
+function proxyReady() {
+  return !aeDocState.proxyMode || Boolean(aeDocState.docenteDocumento);
+}
+
+function updateProxyInfo() {
+  if (!aeDocState.proxyMode) return;
+  const node = document.getElementById('proxyDocenteInfo');
+  if (!node) return;
+  if (!aeDocState.docenteDocumento) {
+    node.textContent = 'Selecciona un docente para cargar instrumentos y resultados.';
+    return;
+  }
+  node.textContent = `${aeDocState.docenteNombre || 'Docente'} · ${aeDocState.docenteDocumento}`;
+}
+
+async function cargarSelectorDocentes() {
+  if (!aeDocState.proxyMode) return;
+  const data = await aeDocFetch('/api/docentes/selector?solo_activos=1');
+  aeDocState.docentes = data.docentes || [];
+  const select = document.getElementById('proxyDocenteSelect');
+  if (!select) return;
+  select.innerHTML = '<option value="">Seleccione un docente</option>' + aeDocState.docentes.map(item => `<option value="${item.documento}">${item.label}</option>`).join('');
+  const selected = new URLSearchParams(window.location.search).get('docente_documento') || '';
+  if (selected && aeDocState.docentes.some(item => item.documento === selected)) {
+    select.value = selected;
+    aeDocState.docenteDocumento = selected;
+    aeDocState.docenteNombre = (aeDocState.docentes.find(item => item.documento === selected) || {}).nombre || '';
+  }
+  updateProxyInfo();
+}
+
+function onProxyDocenteChange() {
+  const select = document.getElementById('proxyDocenteSelect');
+  if (!select) return;
+  aeDocState.docenteDocumento = select.value || '';
+  aeDocState.docenteNombre = (aeDocState.docentes.find(item => item.documento === aeDocState.docenteDocumento) || {}).nombre || '';
+  const url = new URL(window.location.href);
+  if (aeDocState.docenteDocumento) {
+    url.searchParams.set('docente_documento', aeDocState.docenteDocumento);
+  } else {
+    url.searchParams.delete('docente_documento');
+  }
+  window.history.replaceState({}, '', url);
+  updateProxyInfo();
+  nuevoInstrumento();
+  cargarResumenDocente();
+  if (proxyReady()) {
+    cargarResultadosDocente();
+  }
+}
+
+function colorNotaDocente(nota) {
+  if (nota >= 4.5) return '#16a34a';
+  if (nota >= 4.0) return '#0ea5e9';
+  if (nota >= 3.0) return '#f59e0b';
+  return '#dc2626';
+}
+
+function fillSelect(elementId, items, placeholder = 'Seleccione') {
+  const select = document.getElementById(elementId);
+  const current = select.value;
+  select.innerHTML = `<option value="">${placeholder}</option>` + (items || []).map(item => `<option value="${item}">${item}</option>`).join('');
+  if ([...(items || [])].includes(current)) {
+    select.value = current;
+  }
+}
+
+function refreshCursosForGrado() {
+  const grado = document.getElementById('formGrado').value;
+  const cursos = aeDocState.fuentes.cursos_por_grado?.[grado] || [];
+  fillSelect('formCurso', cursos, 'Seleccione');
+}
+
+function refreshFiltroCursos() {
+  const grado = document.getElementById('filtroGrado').value;
+  const cursos = grado ? (aeDocState.fuentes.cursos_por_grado?.[grado] || []) : Object.values(aeDocState.fuentes.cursos_por_grado || {}).flat();
+  const unique = [...new Set(cursos)];
+  fillSelect('filtroCurso', unique, 'Todos');
+}
+
+function renderPreguntas() {
+  const target = document.getElementById('preguntasList');
+  if (!aeDocState.preguntas.length) {
+    aeDocState.selectedPreguntaIndex = null;
+    target.className = 'empty-state';
+    target.innerHTML = 'No hay preguntas cargadas.';
+    return;
+  }
+  target.className = '';
+  target.innerHTML = aeDocState.preguntas.map((pregunta, index) => `
+    <div class="question-item ${aeDocState.selectedPreguntaIndex === index ? 'is-selected' : ''}" role="button" onclick="seleccionarPregunta(${index})">
+      <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+        <div>
+          <span class="badge text-bg-light dimension-badge">${pregunta.dimension || 'Sin dimensión'}</span>
+          <div class="fw-semibold mt-2">${index + 1}. ${pregunta.texto || ''}</div>
+        </div>
+        <button class="btn btn-outline-danger btn-sm" type="button" onclick="eliminarPregunta(${index})"><i class="bi bi-trash"></i></button>
+      </div>
+    </div>`).join('');
+}
+
+function agregarPregunta() {
+  const dimension = document.getElementById('formDimension').value.trim();
+  const texto = document.getElementById('formPregunta').value.trim();
+  if (!dimension || !texto) {
+    aeDocAlert('Debes seleccionar una dimensión y escribir la pregunta.', 'danger');
+    return;
+  }
+  aeDocState.preguntas.push({ dimension, texto });
+  aeDocState.selectedPreguntaIndex = aeDocState.preguntas.length - 1;
+  document.getElementById('formPregunta').value = '';
+  renderPreguntas();
+}
+
+function seleccionarPregunta(index) {
+  const pregunta = aeDocState.preguntas[index];
+  if (!pregunta) return;
+  aeDocState.selectedPreguntaIndex = index;
+  document.getElementById('formDimension').value = pregunta.dimension || '';
+  document.getElementById('formPregunta').value = pregunta.texto || '';
+  renderPreguntas();
+}
+
+function actualizarPreguntaSeleccionada() {
+  const index = aeDocState.selectedPreguntaIndex;
+  if (index === null || index === undefined) {
+    aeDocAlert('Selecciona una pregunta para actualizarla.', 'warning');
+    return;
+  }
+  const dimension = document.getElementById('formDimension').value.trim();
+  const texto = document.getElementById('formPregunta').value.trim();
+  if (!dimension || !texto) {
+    aeDocAlert('Debes seleccionar una dimensión y escribir la pregunta.', 'danger');
+    return;
+  }
+  aeDocState.preguntas[index] = { dimension, texto };
+  renderPreguntas();
+}
+
+function eliminarPregunta(index) {
+  aeDocState.preguntas.splice(index, 1);
+  if (aeDocState.selectedPreguntaIndex === index) {
+    aeDocState.selectedPreguntaIndex = null;
+    document.getElementById('formPregunta').value = '';
+  } else if (aeDocState.selectedPreguntaIndex !== null && aeDocState.selectedPreguntaIndex > index) {
+    aeDocState.selectedPreguntaIndex -= 1;
+  }
+  renderPreguntas();
+}
+
+function eliminarPreguntaSeleccionada() {
+  const index = aeDocState.selectedPreguntaIndex;
+  if (index === null || index === undefined) {
+    aeDocAlert('Selecciona una pregunta para eliminarla.', 'warning');
+    return;
+  }
+  eliminarPregunta(index);
+}
+
+function cargarFormatoBase() {
+  if (aeDocState.preguntas.length && !window.confirm('Se reemplazarán las preguntas actuales. ¿Deseas continuar?')) {
+    return;
+  }
+  aeDocState.preguntas = (aeDocState.fuentes.formato_base || []).map(item => ({ ...item }));
+  aeDocState.selectedPreguntaIndex = null;
+  renderPreguntas();
+}
+
+function nuevoInstrumento() {
+  document.getElementById('instrumentoId').value = '';
+  document.getElementById('formPeriodo').value = 'Periodo 1';
+  document.getElementById('formHabilitada').checked = false;
+  document.getElementById('formPregunta').value = '';
+  aeDocState.preguntas = [];
+  aeDocState.selectedPreguntaIndex = null;
+  renderPreguntas();
+  if (aeDocState.fuentes.areas?.length) document.getElementById('formArea').value = aeDocState.fuentes.areas[0];
+  if (aeDocState.fuentes.grados?.length) document.getElementById('formGrado').value = aeDocState.fuentes.grados[0];
+  refreshCursosForGrado();
+}
+
+function cargarInstrumento(instrumentoId) {
+  const instrumento = (aeDocState.instrumentos || []).find(item => Number(item.id) === Number(instrumentoId));
+  if (!instrumento) return;
+  document.getElementById('instrumentoId').value = instrumento.id;
+  document.getElementById('formArea').value = instrumento.area || '';
+  document.getElementById('formGrado').value = instrumento.grado || '';
+  refreshCursosForGrado();
+  document.getElementById('formCurso').value = instrumento.curso || '';
+  document.getElementById('formPeriodo').value = instrumento.periodo || 'Periodo 1';
+  document.getElementById('formHabilitada').checked = Boolean(Number(instrumento.habilitada || 0));
+  aeDocState.preguntas = (instrumento.preguntas || []).map(item => ({ ...item }));
+  aeDocState.selectedPreguntaIndex = null;
+  document.getElementById('formPregunta').value = '';
+  renderPreguntas();
+}
+
+function exportarResultadosDocente() {
+  if (!proxyReady()) {
+    aeDocAlert('Selecciona un docente antes de exportar.', 'warning');
+    return;
+  }
+  const params = new URLSearchParams();
+  const area = document.getElementById('filtroArea').value;
+  const grado = document.getElementById('filtroGrado').value;
+  const curso = document.getElementById('filtroCurso').value;
+  const periodo = document.getElementById('filtroPeriodo').value;
+  if (area && area !== 'Todos') params.set('area', area);
+  if (grado && grado !== 'Todos') params.set('grado', grado);
+  if (curso && curso !== 'Todos') params.set('curso', curso);
+  if (periodo && periodo !== 'Todos') params.set('periodo', periodo);
+  window.location.href = withProxyUrl('/api/docente/autoevaluacion/exportar', params);
+}
+
+async function cambiarEstadoInstrumento(id, habilitada) {
+  clearAeDocAlert();
+  if (!proxyReady()) {
+    aeDocAlert('Selecciona un docente antes de continuar.', 'warning');
+    return;
+  }
+  try {
+    await aeDocFetch(`/api/docente/autoevaluacion/instrumentos/${id}/estado`, {
+      method: 'POST',
+      body: JSON.stringify(attachProxyPayload({ habilitada })),
+    });
+    await cargarResumenDocente();
+    await cargarResultadosDocente();
+  } catch (error) {
+    aeDocAlert(error.message || 'No fue posible actualizar el estado.', 'danger');
+  }
+}
+
+function renderInstrumentos() {
+  const target = document.getElementById('instrumentosBody');
+  if (!aeDocState.instrumentos.length) {
+    target.innerHTML = '<div class="empty-state">No has creado instrumentos todavía.</div>';
+    return;
+  }
+  target.innerHTML = aeDocState.instrumentos.map((item) => `
+    <div class="question-item">
+      <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+        <div>
+          <div class="fw-bold" style="color:#16324f;">${item.area || 'Área'} · ${item.grado || '—'}-${item.curso || '—'}</div>
+          <div class="small text-muted">${item.periodo || 'Sin periodo'} · ${item.total_preguntas || 0} preguntas</div>
+          <div class="small mt-2"><span class="result-pill ${Number(item.habilitada || 0) ? 'bg-success-subtle text-success-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'}">${Number(item.habilitada || 0) ? 'Habilitada' : 'Borrador'}</span></div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-outline-primary btn-sm" type="button" onclick="cargarInstrumento(${Number(item.id)})"><i class="bi bi-pencil-square me-1"></i>Cargar</button>
+          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="cambiarEstadoInstrumento(${Number(item.id)}, ${Number(item.habilitada || 0) ? 'false' : 'true'})">
+            <i class="bi bi-toggle-${Number(item.habilitada || 0) ? 'on' : 'off'} me-1"></i>${Number(item.habilitada || 0) ? 'Deshabilitar' : 'Habilitar'}
+          </button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderResultados() {
+  const target = document.getElementById('resultadosBody');
+  const resultados = aeDocState.resultados || [];
+  if (!resultados.length) {
+    target.innerHTML = '<div class="empty-state">No hay resultados para los filtros actuales.</div>';
+    return;
+  }
+  const rows = resultados.map((item) => `
+    <tr>
+      <td class="fw-semibold">${item.documento || '—'}</td>
+      <td>${item.nombre || '—'}</td>
+      <td>${item.area || '—'}</td>
+      <td>${item.grado || '—'}-${item.curso || '—'}</td>
+      <td>${item.periodo || '—'}</td>
+      <td>${item.puntaje_total || 0}/${item.puntaje_maximo || 0}</td>
+      <td><span style="color:${colorNotaDocente(Number(item.nota || 0))}; font-weight:700;">${Number(item.nota || 0).toFixed(2)}</span></td>
+      <td>${item.nivel_calculado || item.nivel || '—'}</td>
+      <td>${String(item.fecha || '').replace('T', ' ').slice(0, 16) || '—'}</td>
+      <td><button class="btn btn-outline-info btn-sm" type="button" onclick="verDetalleResultado(${Number(item.respuesta_id)})"><i class="bi bi-eye me-1"></i>Ver</button></td>
+    </tr>`).join('');
+  target.innerHTML = `
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Documento</th><th>Estudiante</th><th>Área</th><th>Grupo</th><th>Periodo</th><th>Puntaje</th><th>Nota</th><th>Nivel</th><th>Fecha</th><th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function actualizarKpis() {
+  const instrumentos = aeDocState.instrumentos || [];
+  const resultados = aeDocState.resultados || [];
+  const resumen = aeDocState.resumen || { total_estudiantes: 0, promedio_curso: 0 };
+  document.getElementById('kpiInstrumentos').textContent = String(instrumentos.length);
+  document.getElementById('kpiHabilitados').textContent = String(instrumentos.filter(item => Number(item.habilitada || 0) === 1).length);
+  document.getElementById('kpiResultados').textContent = String(resultados.length || Number(resumen.total_estudiantes || 0));
+  document.getElementById('kpiPromedio').textContent = Number(resumen.promedio_curso || 0).toFixed(2);
+  document.getElementById('kpiPromedio').style.color = colorNotaDocente(Number(resumen.promedio_curso || 0));
+}
+
+async function cargarResumenDocente() {
+  clearAeDocAlert();
+  if (!proxyReady()) {
+    aeDocState.fuentes = { areas: [], grados: [], cursos_por_grado: {}, formato_base: [] };
+    aeDocState.instrumentos = [];
+    renderInstrumentos();
+    actualizarKpis();
+    aeDocAlert('Selecciona un docente para consultar la autoevaluación.', 'info');
+    return;
+  }
+  try {
+    const data = await aeDocFetch(withProxyUrl('/api/docente/autoevaluacion/resumen'));
+    aeDocState.fuentes = data.fuentes || { areas: [], grados: [], cursos_por_grado: {}, formato_base: [] };
+    aeDocState.instrumentos = data.instrumentos || [];
+    fillSelect('formArea', aeDocState.fuentes.areas || [], 'Seleccione');
+    fillSelect('formGrado', aeDocState.fuentes.grados || [], 'Seleccione');
+    refreshCursosForGrado();
+    fillSelect('filtroArea', ['Todos', ...(data.fuentes?.areas || [])], 'Todos');
+    fillSelect('filtroGrado', ['Todos', ...(data.fuentes?.grados || [])], 'Todos');
+    refreshFiltroCursos();
+    renderInstrumentos();
+    actualizarKpis();
+    if (!document.getElementById('instrumentoId').value) {
+      nuevoInstrumento();
+    }
+  } catch (error) {
+    aeDocAlert(error.message || 'No fue posible cargar el resumen docente.', 'danger');
+  }
+}
+
+async function cargarResultadosDocente() {
+  clearAeDocAlert();
+  if (!proxyReady()) {
+    aeDocState.resultados = [];
+    aeDocState.resumen = null;
+    renderResultados();
+    actualizarKpis();
+    return;
+  }
+  const params = new URLSearchParams();
+  const area = document.getElementById('filtroArea').value;
+  const grado = document.getElementById('filtroGrado').value;
+  const curso = document.getElementById('filtroCurso').value;
+  const periodo = document.getElementById('filtroPeriodo').value;
+  if (area && area !== 'Todos') params.set('area', area);
+  if (grado && grado !== 'Todos') params.set('grado', grado);
+  if (curso && curso !== 'Todos') params.set('curso', curso);
+  if (periodo && periodo !== 'Todos') params.set('periodo', periodo);
+  try {
+    const data = await aeDocFetch(withProxyUrl('/api/docente/autoevaluacion/resultados', params));
+    aeDocState.resultados = data.resultados || [];
+    aeDocState.resumen = data.resumen || null;
+    const filtros = data.filtros || {};
+    fillSelect('filtroPeriodo', ['Todos', ...(filtros.periodos || [])], 'Todos');
+    renderResultados();
+    actualizarKpis();
+  } catch (error) {
+    aeDocAlert(error.message || 'No fue posible consultar resultados.', 'danger');
+  }
+}
+
+async function verDetalleResultado(respuestaId) {
+  try {
+    const data = await aeDocFetch(withProxyUrl(`/api/docente/autoevaluacion/resultados/${respuestaId}`));
+    const detalle = data.detalle || {};
+    const rows = (detalle.detalle_preguntas || []).map((item, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${item.dimension || '—'}</td>
+        <td>${item.texto || ''}</td>
+        <td>${item.respuesta || 0}</td>
+        <td>${item.puntaje || 0}</td>
+      </tr>`).join('');
+    document.getElementById('detalleResultadoBody').innerHTML = `
+      <div class="mb-3 small text-muted">
+        <strong>${detalle.nombre || 'Estudiante'}</strong> · ${detalle.documento || '—'} · ${detalle.area || '—'} · Nota ${Number(detalle.nota || 0).toFixed(2)} · ${detalle.nivel_calculado || detalle.nivel || '—'}
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>#</th><th>Dimensión</th><th>Pregunta</th><th>Respuesta</th><th>Puntaje</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('detalleResultadoModal')).show();
+  } catch (error) {
+    aeDocAlert(error.message || 'No fue posible cargar el detalle.', 'danger');
+  }
+}
+
+document.getElementById('instrumentoForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  clearAeDocAlert();
+  if (!proxyReady()) {
+    aeDocAlert('Selecciona un docente antes de guardar un instrumento.', 'warning');
+    return;
+  }
+  try {
+    const payload = attachProxyPayload({
+      instrumento_id: document.getElementById('instrumentoId').value || null,
+      area: document.getElementById('formArea').value,
+      grado: document.getElementById('formGrado').value,
+      curso: document.getElementById('formCurso').value,
+      periodo: document.getElementById('formPeriodo').value,
+      habilitada: document.getElementById('formHabilitada').checked,
+      preguntas: aeDocState.preguntas,
+    });
+    await aeDocFetch('/api/docente/autoevaluacion/instrumentos', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    aeDocAlert('Instrumento guardado correctamente.', 'success');
+    await cargarResumenDocente();
+    await cargarResultadosDocente();
+  } catch (error) {
+    aeDocAlert(error.message || 'No fue posible guardar el instrumento.', 'danger');
+  }
+});
+
+document.getElementById('formGrado').addEventListener('change', refreshCursosForGrado);
+document.getElementById('filtroGrado').addEventListener('change', refreshFiltroCursos);
+if (aeDocState.proxyMode) {
+  document.getElementById('proxyDocenteSelect')?.addEventListener('change', onProxyDocenteChange);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (aeDocState.proxyMode) {
+    await cargarSelectorDocentes();
+  }
+  await cargarResumenDocente();
+  if (proxyReady()) {
+    await cargarResultadosDocente();
+  }
+});
+</script>
+{% endblock %}

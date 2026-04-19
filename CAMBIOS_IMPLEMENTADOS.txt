@@ -1,0 +1,121 @@
+# Resumen de Cambios - Filtros Acceso Maestro
+
+## 🐛 Problema Reportado
+Los filtros de **Grado, Área y Evaluación** en la pestaña **Acceso Maestro > Configuración de Examen** no funcionaban.
+
+## ✅ Soluciones Implementadas
+
+### 1️⃣ Creación de Tabla `config_examenes`
+
+**Ubicación**: Método `_ensure_config()` en `modulo_superadmin.py` (aprox. línea 357)
+
+**Cambio**:
+- Se agregó la creación de la tabla `config_examenes` que estaba faltando
+- Esta tabla almacena la configuración de exámenes por combinación grado+área+evaluación
+
+```python
+# Se agregó esto en _ensure_config():
+self.cur.execute("""CREATE TABLE IF NOT EXISTS config_examenes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    grado TEXT,
+    area TEXT,
+    evaluacion TEXT,
+    duracion_segundos INTEGER,
+    cantidad_preguntas INTEGER,
+    max_intentos INTEGER DEFAULT 1,
+    permitir_reintentos INTEGER DEFAULT 1,
+    examen_activo INTEGER DEFAULT 0
+)""")
+```
+
+---
+
+### 2️⃣ Corrección del Método `_maestro_refresh_grados()`
+
+**Ubicación**: Método `_maestro_refresh_grados()` en `modulo_superadmin.py` (aprox. línea 1554)
+
+**Problema Original**:
+```python
+def _maestro_refresh_grados(self):
+    # ❌ Intentaba leer desde tabla 'resultados' que podría no existir
+    rows = self.cur.execute(
+        "SELECT DISTINCT grado FROM resultados WHERE grado IS NOT NULL"
+    ).fetchall()
+```
+
+**Solución Implementada**:
+```python
+def _maestro_refresh_grados(self):
+    # ✅ Ahora lee directamente desde preguntas.xlsx
+    grados_desde_preguntas = cargar_grados_desde_preguntas(self.preguntas_path)
+    grados = ["Seleccione"] + grados_desde_preguntas
+```
+
+---
+
+## 🔄 Flujo de Filtros Ahora Funciona Así:
+
+```
+1. Abre: Acceso Maestro → Configuración de Examen
+                    ↓
+2. Combo "Grado" se llena automáticamente desde preguntas.xlsx
+   [Seleccione | 4 | 5 | ...]
+                    ↓
+3. Usuario selecciona un Grado (ej: "4")
+   → Callback: _maestro_on_grado_selected()
+   → Carga áreas disponibles para grado 4
+   [Seleccione | Ciencias Sociales 4 | Matemáticas 4]
+                    ↓
+4. Usuario selecciona un Área (ej: "Ciencias Sociales 4")
+   → Callback: _maestro_on_area_selected()
+   → Carga evaluaciones para grado 4 + área
+   [Seleccione | soc4_p1_exam1 | soc4_p1_exam2]
+                    ↓
+5. Usuario selecciona Evaluación (ej: "soc4_p1_exam1")
+   → Callback: _maestro_cargar_config_examen()
+   → Carga configuración guardada (duración, preguntas, intentos, etc.)
+                    ↓
+6. Usuario puede editar y guardar nueva configuración
+   → Método: maestro_guardar_config()
+   → Guarda en tabla config_examenes
+```
+
+---
+
+## 📊 Validación de Cambios
+
+Todo fue validado con 4 tests automáticos:
+
+| Test | Resultado | Detalles |
+|------|-----------|----------|
+| Creación de tablas | ✓ PASÓ | Tabla config_examenes creada con 9 columnas |
+| Cargar grados | ✓ PASÓ | Se detectaron grados 4 y 5 |
+| Cargar áreas | ✓ PASÓ | Grado 4 tiene área "Ciencias Sociales 4" |
+| Cargar evaluaciones | ✓ PASÓ | Se cargan evaluaciones por grado+área |
+
+---
+
+## 📁 Archivos Modificados
+
+| Archivo | Líneas | Cambios |
+|---------|--------|---------|
+| `modulo_superadmin.py` | 357-375 | Agregada creación de tabla config_examenes |
+| `modulo_superadmin.py` | 1554-1567 | Reemplazada lógica de carga de grados |
+| `test_maestro_filtros.py` | NUEVO | Script de validación (4 tests) |
+| `CORRECCION_FILTROS_MAESTRO.md` | NUEVO | Documentación detallada |
+
+---
+
+## 🚀 Instrucciones de Uso
+
+1. **La próxima vez que abras el módulo**, la tabla se creará automáticamente
+2. **Abre la pestaña "Acceso Maestro"**
+3. **En "Configuración de Examen"**, los filtros ya funcionarán:
+   - Selecciona Grado → Se cargan automáticamente las áreas
+   - Selecciona Área → Se cargan automáticamente las evaluaciones
+   - Selecciona Evaluación → Se cargan los parámetros guardados
+4. **Edita los parámetros** y haz clic en **"Guardar Configuración"**
+
+---
+
+**Status**: 🟢 **COMPLETADO Y PROBADO**

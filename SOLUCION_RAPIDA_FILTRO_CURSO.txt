@@ -1,0 +1,157 @@
+# 🎯 SOLUCIÓN IMPLEMENTADA: Filtro de Curso en Generar Examen
+
+## ¿Qué se arregló?
+
+El módulo **Super Admin → Generar Examen** no filtraba correctamente por curso al cargar estudiantes.
+
+---
+
+## El Problema
+
+```
+❌ ANTES: Docente selecciona Grado 5, Curso 01
+   → Sistema generaba exámenes para TODOS los cursos (5-01, 5-02, 5-03)
+   → Ignoraba la selección de Curso 01
+```
+
+---
+
+## La Solución
+
+```
+✅ DESPUÉS: Docente selecciona Grado 5, Curso 01
+   → Sistema genera exámenes SOLO para estudiantes de Curso 01
+   → Preguntas vienen del Grado 5 (igual para todos los cursos)
+   → Resultado: 15 exámenes para 15 estudiantes de 5-01
+```
+
+---
+
+## Cómo Funciona Ahora
+
+| Elemento | Se Filtra Por | Resultado |
+|----------|--------------|-----------|
+| **Banco de Preguntas** | Grado + Área + Evaluación | Mismo contenido para todos los cursos |
+| **Lista de Estudiantes** | Grado + Curso | Solo estudiantes del curso seleccionado |
+| **Archivos Generados** | Un archivo por estudiante | 15 archivos para 15 estudiantes |
+
+---
+
+## Flujo Correcto
+
+```
+Interface (Docente selecciona):
+  Grado: 5
+  Curso: 01 ← AHORA SE FILTRA
+  Área: Ciencias Sociales
+  Evaluacion: Primera
+      ↓
+┌─────────────────────────────┐
+│ Cargar Preguntas            │
+│ Grado=5, Área, Eval         │
+│ (Curso NO afecta)           │
+├─────────────────────────────┤
+│ Resultado: 70 preguntas     │
+│ (Iguales para todos cursos) │
+└─────────────────────────────┘
+      ↓
+┌─────────────────────────────┐
+│ Cargar Estudiantes          │
+│ Grado=5 AND Curso=01        │
+├─────────────────────────────┤
+│ Resultado: 15 estudiantes   │
+│ (Solo de 5-01)              │
+└─────────────────────────────┘
+      ↓
+    Generar 15 PDFs
+    (Mismo contenido, diferentes alumnos)
+```
+
+---
+
+## Cambios Técnicos
+
+### Archivo Modificado
+- `modulo_superadmin.py` - Función `_do_generate_exams()`
+
+### Agregado
+- Parámetro: `curso=None`
+- Lógica: Filtrar estudiantes por grado + curso
+
+### Resultado
+```python
+# Antes (❌):
+alumnos = self.estudiantes_df[
+    self.estudiantes_df["grado"] == grado
+]
+
+# Después (✅):
+df_filtered = self.estudiantes_df[
+    self.estudiantes_df["grado"] == grado
+]
+if curso_final:
+    df_filtered = df_filtered[
+        df_filtered["curso"] == curso_final
+    ]
+alumnos = df_filtered.to_dict(orient="records")
+```
+
+---
+
+## Validaciones
+
+✅ Compilación sin errores  
+✅ Módulo importa correctamente  
+✅ Parámetro `curso` existe en la función  
+✅ Tests unitarios pasan  
+✅ Sin regresiones (retrocompatible 100%)  
+
+---
+
+## Documentación Disponible
+
+- `CORRECCION_FILTRO_CURSO_EXAMEN.md` - Detalles técnicos
+- `RESUMEN_SOLUCION_FILTRO_CURSO.md` - Explicación ejecutiva
+- `VALIDACION_FINAL_FILTRO_CURSO.md` - Validaciones y checklist
+- `test_filtro_curso.py` - Prueba de funcionamiento
+
+---
+
+## Verificación Rápida
+
+Para verificar que funciona:
+
+```python
+# Generar para Grado 5, Curso 01 (solo estos estudiantes)
+msa._do_generate_exams(
+    out_dir="./exams",
+    grado="5",
+    area="Ciencias Sociales",
+    evaluacion="Primera",
+    curso="01",  # ← Filtra estudiantes por este curso
+    estudiante=None
+)
+```
+
+---
+
+## Comportamiento Esperado
+
+| Caso | Entrada | Estudiantes Cargados | Exámenes Generados |
+|------|---------|---|---|
+| Con curso | `curso="01"` | Grado 5 + Curso 01 | Para 5-01 solo |
+| Sin curso | `curso=None` | Grado 5 (todos cursos) | Para 5-01, 5-02, etc. |
+| Individual | `estudiante=dict(...)` | N/A | 1 examen para ese alumno |
+
+---
+
+## ✨ Estado Final
+
+**PROBLEMA:** Cursor ignorado en generación de exámenes  
+**SOLUCIÓN:** Implementada  
+**VALIDACIÓN:** Completada  
+**ESTADO:** ✅ LISTO PARA USAR
+
+---
+
+*Última actualización: 4 de marzo de 2026*

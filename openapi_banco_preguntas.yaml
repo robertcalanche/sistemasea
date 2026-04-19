@@ -1,0 +1,261 @@
+openapi: 3.0.3
+info:
+  title: API Banco de Preguntas SEA
+  version: 1.0.0
+  description: |
+    API REST para la administración completa del banco de preguntas profesional en SEA.
+    
+    Incluye CRUD, importación masiva, estadísticas, validación y catálogos.
+servers:
+  - url: http://localhost:5000/api/v1
+paths:
+  /banco-preguntas:
+    get:
+      summary: Listar preguntas filtradas
+      parameters:
+        - in: query
+          name: grado
+          schema:
+            type: string
+        - in: query
+          name: area
+          schema:
+            type: string
+        - in: query
+          name: evaluacion
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de preguntas
+    post:
+      summary: Crear nueva pregunta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Pregunta creada
+  /banco-preguntas/{id_pregunta}:
+    put:
+      summary: Editar pregunta existente
+      parameters:
+        - in: path
+          name: id_pregunta
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Pregunta actualizada
+    delete:
+      summary: Eliminar pregunta
+      parameters:
+        - in: path
+          name: id_pregunta
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pregunta eliminada
+  /banco-preguntas/importar:
+    post:
+      summary: Importar preguntas masivamente (Excel)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Resumen de importación
+  /banco-preguntas/estadisticas:
+    get:
+      summary: Obtener estadísticas del banco
+      responses:
+        '200':
+          description: Estadísticas
+  /banco-preguntas/validar:
+    get:
+      summary: Validar integridad del banco
+      responses:
+        '200':
+          description: Advertencias de integridad
+  /banco-preguntas/catalogo/grados:
+    get:
+      summary: Catálogo de grados
+      responses:
+        '200':
+          description: Lista de grados
+  /banco-preguntas/catalogo/areas:
+    get:
+      summary: Catálogo de áreas
+      parameters:
+        - in: query
+          name: grado
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de áreas
+  /banco-preguntas/catalogo/evaluaciones:
+    get:
+      summary: Catálogo de evaluaciones
+      parameters:
+        - in: query
+          name: grado
+          schema:
+            type: string
+        - in: query
+          name: area
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de evaluaciones
+  /examenes/generar:
+    post:
+      summary: Generar exámenes y PDFs
+      description: |
+        Genera exámenes para uno o varios estudiantes y permite elegir el formato de PDF:
+        - "individual": un PDF por estudiante
+        - "todos": PDFs individuales para todos
+        - "consolidado": un solo PDF con todos los exámenes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grado:
+                  type: string
+                  example: "5"
+                area:
+                  type: string
+                  example: "matematicas"
+                evaluacion:
+                  type: string
+                  example: "demo"
+                curso:
+                  type: string
+                  example: "501"
+                formato_examen:
+                  type: string
+                  enum: [individual, todos, consolidado]
+                  default: individual
+                  description: |
+                    Formato de PDF a generar.
+                generar_pdf:
+                  type: boolean
+                  default: true
+                estudiante_documento:
+                  type: string
+                  description: Documento del estudiante (opcional, para generar solo uno)
+      responses:
+        '200':
+          description: Exámenes generados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                  total_generados:
+                    type: integer
+                  examenes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        exam_code:
+                          type: string
+                        version:
+                          type: string
+                        estudiante_documento:
+                          type: string
+                        estudiante_nombre:
+                          type: string
+                        cantidad_preguntas:
+                          type: integer
+                        ruta_pdf:
+                          type: string
+                  rutas_pdfs:
+                    type: array
+                    items:
+                      type: string
+                    description: Rutas de PDFs individuales (si aplica)
+                  ruta_pdf_consolidado:
+                    type: string
+                    description: Ruta del PDF consolidado (si aplica)
+              examples:
+                individual:
+                  summary: PDF individual por estudiante
+                  value:
+                    mensaje: "Exámenes generados y registrados"
+                    total_generados: 1
+                    examenes:
+                      - exam_code: "A12345"
+                        version: "A"
+                        estudiante_documento: "123456"
+                        estudiante_nombre: "Juan Perez"
+                        cantidad_preguntas: 20
+                        ruta_pdf: "out_examenes_api/A12345_123456.pdf"
+                    rutas_pdfs:
+                      - "out_examenes_api/A12345_123456.pdf"
+                todos:
+                  summary: PDFs individuales para todos
+                  value:
+                    mensaje: "Exámenes generados y registrados"
+                    total_generados: 2
+                    examenes:
+                      - exam_code: "A12345"
+                        version: "A"
+                        estudiante_documento: "123456"
+                        estudiante_nombre: "Juan Perez"
+                        cantidad_preguntas: 20
+                        ruta_pdf: "out_examenes_api/A12345_123456.pdf"
+                      - exam_code: "B67890"
+                        version: "B"
+                        estudiante_documento: "654321"
+                        estudiante_nombre: "Ana Ruiz"
+                        cantidad_preguntas: 20
+                        ruta_pdf: "out_examenes_api/B67890_654321.pdf"
+                    rutas_pdfs:
+                      - "out_examenes_api/A12345_123456.pdf"
+                      - "out_examenes_api/B67890_654321.pdf"
+                consolidado:
+                  summary: Un solo PDF consolidado
+                  value:
+                    mensaje: "Exámenes generados y registrados"
+                    total_generados: 2
+                    examenes:
+                      - exam_code: "A12345"
+                        version: "A"
+                        estudiante_documento: "123456"
+                        estudiante_nombre: "Juan Perez"
+                        cantidad_preguntas: 20
+                        ruta_pdf: "out_examenes_api/A12345_123456.pdf"
+                      - exam_code: "B67890"
+                        version: "B"
+                        estudiante_documento: "654321"
+                        estudiante_nombre: "Ana Ruiz"
+                        cantidad_preguntas: 20
+                        ruta_pdf: "out_examenes_api/B67890_654321.pdf"
+                    ruta_pdf_consolidado: "out_examenes_api/examenes_consolidados.pdf"

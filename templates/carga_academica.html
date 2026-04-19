@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+{% block title %}Carga Académica{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h2 class="mb-0 fw-bold" style="color:var(--sea-primary)">
+      <i class="bi bi-diagram-3 me-2"></i>Carga Académica
+    </h2>
+    <p class="text-muted mb-0 small">Asigna docentes por área, grado y curso con validación de horas.</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <span class="badge bg-primary fs-6 align-self-center" id="cargasBadge">0 registros</span>
+    <button class="btn btn-success btn-sm" onclick="abrirModalNueva()">
+      <i class="bi bi-plus-lg me-1"></i>Nueva Asignación
+    </button>
+    {% if web_can_access('/superadmin') %}
+    <a href="/superadmin" class="btn btn-outline-dark btn-sm">Volver</a>
+    {% endif %}
+  </div>
+</div>
+
+<div id="alertaCarga" class="alert d-none" role="alert"></div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold mb-1">Docente</label>
+        <select class="form-select form-select-sm" id="filtroDocente" onchange="cargarCargas()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold mb-1">Grado</label>
+        <select class="form-select form-select-sm" id="filtroGrado" onchange="onFiltroGradoCursoChange()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold mb-1">Curso</label>
+        <select class="form-select form-select-sm" id="filtroCurso" onchange="onFiltroGradoCursoChange()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold mb-1">Área</label>
+        <select class="form-select form-select-sm" id="filtroArea" onchange="cargarCargas()">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold mb-1">&nbsp;</label>
+        <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
+          <i class="bi bi-x-lg me-1"></i>Limpiar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong>Asignaciones registradas</strong>
+    <small id="cargaResumen" class="text-muted">Cargando...</small>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle small mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Docente</th>
+          <th>Área</th>
+          <th>Grado</th>
+          <th>Curso</th>
+          <th>Horas</th>
+          <th>Año</th>
+          <th>Estado</th>
+          <th style="width:120px">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="cargaBody">
+        <tr><td colspan="9" class="text-center py-4 text-muted">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCarga" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalCargaTitulo">Nueva Asignación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="cargaId">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Docente *</label>
+            <select class="form-select form-select-sm" id="cargaDocente"></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Grado *</label>
+            <select class="form-select form-select-sm" id="cargaGrado" onchange="cargarAreasModal()">
+              <option value="">Selecciona</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Curso *</label>
+            <select class="form-select form-select-sm" id="cargaCurso" onchange="cargarAreasModal()">
+              <option value="">Selecciona</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Área *</label>
+            <select class="form-select form-select-sm" id="cargaArea">
+              <option value="">Selecciona</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Horas *</label>
+            <input type="number" min="1" class="form-control form-control-sm" id="cargaHoras" value="1">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Año Lectivo *</label>
+            <input type="number" min="2024" max="2100" class="form-control form-control-sm" id="cargaAnio">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Estado</label>
+            <select class="form-select form-select-sm" id="cargaEstado">
+              <option value="Activo">Activo</option>
+              <option value="Inactivo">Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="alert alert-danger d-none mt-3 small" id="modalCargaError"></div>
+        <div class="alert alert-info d-none mt-3 small" id="modalCargaInfo"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="guardarCarga()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let modalCarga = null;
+let docentesCache = [];
+let gradosCache = [];
+let cursosCache = [];
+let areasFiltroCache = [];
+
+function mostrarAlertaCarga(tipo, msg) {
+  const box = document.getElementById('alertaCarga');
+  box.className = `alert alert-${tipo}`;
+  box.textContent = msg;
+  box.classList.remove('d-none');
+}
+
+function ocultarAlertaCarga() {
+  document.getElementById('alertaCarga').classList.add('d-none');
+}
+
+function escapeHtml(valor) {
+  return String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function llenarSelect(selectId, values, emptyLabel='Todos') {
+  const select = document.getElementById(selectId);
+  const current = select.value;
+  select.innerHTML = `<option value="">${emptyLabel}</option>` + values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+  if (values.includes(current)) select.value = current;
+}
+
+function llenarAreasSelect(selectId, areas, emptyLabel='Todas') {
+  const select = document.getElementById(selectId);
+  const current = select.value;
+  select.innerHTML = `<option value="">${emptyLabel}</option>` + areas.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+  if (areas.includes(current)) select.value = current;
+}
+
+async function cargarCatalogosCarga() {
+  const [respDocentes, respMatricula] = await Promise.all([
+    fetch('/api/docentes/selector?solo_activos=1'),
+    fetch('/api/matricula/catalogos'),
+  ]);
+  const dataDocentes = await respDocentes.json();
+  const dataMatricula = await respMatricula.json();
+
+  docentesCache = dataDocentes.docentes || [];
+  gradosCache = dataMatricula.grados || [];
+  cursosCache = dataMatricula.cursos || [];
+
+  const filtroDocente = document.getElementById('filtroDocente');
+  filtroDocente.innerHTML = '<option value="">Todos</option>' + docentesCache.map(d =>
+    `<option value="${escapeHtml(d.documento)}">${escapeHtml(d.label)}</option>`
+  ).join('');
+
+  const modalDocente = document.getElementById('cargaDocente');
+  modalDocente.innerHTML = '<option value="">Selecciona un docente</option>' + docentesCache.map(d =>
+    `<option value="${escapeHtml(d.documento)}">${escapeHtml(d.label)}</option>`
+  ).join('');
+
+  llenarSelect('filtroGrado', gradosCache, 'Todos');
+  llenarSelect('filtroCurso', cursosCache, 'Todos');
+  llenarSelect('cargaGrado', gradosCache, 'Selecciona');
+  llenarSelect('cargaCurso', cursosCache, 'Selecciona');
+}
+
+async function cargarAreasDesdePlan(grado, curso) {
+  const params = new URLSearchParams();
+  params.set('limit', '500');
+  if (grado) params.set('grado', grado);
+  if (curso) params.set('curso', curso);
+  const resp = await fetch(`/api/plan-estudios?${params.toString()}`);
+  const data = await resp.json();
+  if (!data.ok) return [];
+  const unique = [...new Set((data.items || []).map(item => String(item.area || '').trim()).filter(Boolean))];
+  unique.sort((a, b) => a.localeCompare(b, 'es'));
+  return unique;
+}
+
+async function onFiltroGradoCursoChange() {
+  const grado = document.getElementById('filtroGrado').value;
+  const curso = document.getElementById('filtroCurso').value;
+  areasFiltroCache = await cargarAreasDesdePlan(grado, curso);
+  llenarAreasSelect('filtroArea', areasFiltroCache, 'Todas');
+  await cargarCargas();
+}
+
+async function cargarAreasModal(areaSeleccionada = '') {
+  const grado = document.getElementById('cargaGrado').value;
+  const curso = document.getElementById('cargaCurso').value;
+  const areas = await cargarAreasDesdePlan(grado, curso);
+  llenarAreasSelect('cargaArea', areas, 'Selecciona');
+  if (areaSeleccionada && areas.includes(areaSeleccionada)) {
+    document.getElementById('cargaArea').value = areaSeleccionada;
+  }
+  const info = document.getElementById('modalCargaInfo');
+  if (!grado || !curso) {
+    info.classList.add('d-none');
+    return;
+  }
+  if (!areas.length) {
+    info.textContent = 'No hay áreas registradas en Plan de Estudios para ese grado y curso.';
+    info.classList.remove('d-none');
+  } else {
+    info.textContent = `Se cargaron ${areas.length} área(s) desde Plan de Estudios.`;
+    info.classList.remove('d-none');
+  }
+}
+
+async function cargarCargas() {
+  ocultarAlertaCarga();
+  const tbody = document.getElementById('cargaBody');
+  tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+
+  const params = new URLSearchParams();
+  const docente = document.getElementById('filtroDocente').value;
+  const grado = document.getElementById('filtroGrado').value;
+  const curso = document.getElementById('filtroCurso').value;
+  const area = document.getElementById('filtroArea').value;
+  if (docente) params.set('docente_documento', docente);
+  if (grado) params.set('grado', grado);
+  if (curso) params.set('curso', curso);
+  if (area) params.set('area', area);
+
+  try {
+    const resp = await fetch(`/api/carga-academica?${params.toString()}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Error al cargar registros</td></tr>';
+      return;
+    }
+    const rows = data.cargas || [];
+    document.getElementById('cargasBadge').textContent = `${rows.length} registros`;
+    document.getElementById('cargaResumen').textContent = `${rows.length} asignación(es) encontradas`;
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Sin asignaciones registradas</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => {
+      const estadoBadge = String(r.estado || '').toLowerCase() === 'activo' ? 'bg-success' : 'bg-secondary';
+      return `
+        <tr>
+          <td>${Number(r.id || 0)}</td>
+          <td><strong>${escapeHtml(r.docente_nombre || '')}</strong><br><small class="text-muted">${escapeHtml(r.docente_documento || '')}</small></td>
+          <td>${escapeHtml(r.area || '')}</td>
+          <td>${escapeHtml(r.grado || '')}</td>
+          <td>${escapeHtml(r.curso || '')}</td>
+          <td><span class="badge bg-secondary">${Number(r.horas_asignadas || 0)}</span>${Number(r.horas_extras_usadas || 0) > 0 ? `<br><small class="text-warning">+${Number(r.horas_extras_usadas)} extra</small>` : ''}</td>
+          <td>${escapeHtml(r.anio_lectivo || '')}</td>
+          <td><span class="badge ${estadoBadge}">${escapeHtml(r.estado || '')}</span></td>
+          <td>
+            <button class="btn btn-outline-primary btn-sm" onclick="abrirModalEditar(${Number(r.id || 0)})" title="Editar"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-outline-danger btn-sm" onclick="eliminarCarga(${Number(r.id || 0)})" title="Eliminar"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Error de conexión</td></tr>';
+  }
+}
+
+function limpiarFiltros() {
+  document.getElementById('filtroDocente').value = '';
+  document.getElementById('filtroGrado').value = '';
+  document.getElementById('filtroCurso').value = '';
+  document.getElementById('filtroArea').innerHTML = '<option value="">Todas</option>';
+  cargarCargas();
+}
+
+function limpiarModalCarga() {
+  document.getElementById('cargaId').value = '';
+  document.getElementById('cargaDocente').value = '';
+  document.getElementById('cargaGrado').value = '';
+  document.getElementById('cargaCurso').value = '';
+  document.getElementById('cargaArea').innerHTML = '<option value="">Selecciona</option>';
+  document.getElementById('cargaHoras').value = '1';
+  document.getElementById('cargaAnio').value = String(new Date().getFullYear());
+  document.getElementById('cargaEstado').value = 'Activo';
+  document.getElementById('modalCargaError').classList.add('d-none');
+  document.getElementById('modalCargaInfo').classList.add('d-none');
+}
+
+function abrirModalNueva() {
+  limpiarModalCarga();
+  document.getElementById('modalCargaTitulo').textContent = 'Nueva Asignación';
+  modalCarga.show();
+}
+
+async function abrirModalEditar(id) {
+  limpiarModalCarga();
+  document.getElementById('modalCargaTitulo').textContent = 'Editar Asignación';
+  try {
+    const resp = await fetch(`/api/carga-academica/${id}`);
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      mostrarAlertaCarga('danger', data.error || 'No se pudo cargar la asignación');
+      return;
+    }
+    const item = data.carga || {};
+    document.getElementById('cargaId').value = String(item.id || '');
+    document.getElementById('cargaDocente').value = String(item.docente_documento || '');
+    document.getElementById('cargaGrado').value = String(item.grado || '');
+    document.getElementById('cargaCurso').value = String(item.curso || '');
+    document.getElementById('cargaHoras').value = String(item.horas_asignadas || 1);
+    document.getElementById('cargaAnio').value = String(item.anio_lectivo || new Date().getFullYear());
+    document.getElementById('cargaEstado').value = String(item.estado || 'Activo');
+    await cargarAreasModal(String(item.area || ''));
+    modalCarga.show();
+  } catch (err) {
+    mostrarAlertaCarga('danger', 'Error de conexión al consultar la asignación');
+  }
+}
+
+async function guardarCarga() {
+  const id = document.getElementById('cargaId').value;
+  const payload = {
+    docente_documento: document.getElementById('cargaDocente').value,
+    area: document.getElementById('cargaArea').value,
+    grado: document.getElementById('cargaGrado').value,
+    curso: document.getElementById('cargaCurso').value,
+    horas_asignadas: document.getElementById('cargaHoras').value,
+    anio_lectivo: document.getElementById('cargaAnio').value,
+    estado: document.getElementById('cargaEstado').value,
+  };
+
+  const errBox = document.getElementById('modalCargaError');
+  errBox.classList.add('d-none');
+
+  try {
+    const resp = await fetch(id ? `/api/carga-academica/${id}` : '/api/carga-academica', {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      errBox.textContent = data.error || 'No se pudo guardar la asignación';
+      errBox.classList.remove('d-none');
+      return;
+    }
+    modalCarga.hide();
+    const extras = data.usa_horas_extras ? ' Se usaron horas extra del docente.' : '';
+    mostrarAlertaCarga('success', `${id ? 'Asignación actualizada.' : 'Asignación creada.'}${extras}`);
+    await cargarCargas();
+  } catch (err) {
+    errBox.textContent = 'Error de conexión al guardar';
+    errBox.classList.remove('d-none');
+  }
+}
+
+async function eliminarCarga(id) {
+  if (!confirm(`¿Eliminar la asignación ${id}?`)) return;
+  try {
+    const resp = await fetch(`/api/carga-academica/${id}`, { method: 'DELETE' });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      mostrarAlertaCarga('danger', data.error || 'No se pudo eliminar la asignación');
+      return;
+    }
+    mostrarAlertaCarga('success', 'Asignación eliminada.');
+    await cargarCargas();
+  } catch (err) {
+    mostrarAlertaCarga('danger', 'Error de conexión al eliminar');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  modalCarga = new bootstrap.Modal(document.getElementById('modalCarga'));
+  await cargarCatalogosCarga();
+  await cargarCargas();
+});
+</script>
+{% endblock %}
